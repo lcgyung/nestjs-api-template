@@ -7,10 +7,10 @@
 [`README.md`](README.md)를 참고하세요. 이 문서는 코드만 봐서는 알기 어려운 작업 규칙에
 집중합니다.
 
-> **상태: 스캐폴딩 미완료.** 현재 저장소에는 `README.md`·`CLAUDE.md`·`LICENSE`만 존재하며
-> 실제 소스 코드(`package.json`, `src/` 등)는 아직 없습니다. 아래 내용은 **의도된 설계**입니다.
-> 코드를 생성할 때 이 규칙을 기준으로 삼고, 실제 파일을 추가한 뒤에는 이 문서를 실제 상태에
-> 맞게 갱신하세요.
+> **상태: 핵심 스캐폴딩 완료.** `package.json`·`src/`·`test/`·`docker-compose.yml`·CI 가 구성되어
+> 있고, `npm run build`/`lint`/`test` 가 통과합니다. 아래 규칙은 설계이자 현재 코드의 기준입니다.
+> 코드를 변경하면 이 문서도 실제 상태에 맞게 갱신하세요. 미구현 항목은 하단 "로드맵" 참고
+> (특히 TDD/품질 게이트 자동화는 아직 미구현 — [`docs/quality-gate.md`](docs/quality-gate.md) 청사진).
 
 ## 패키지 매니저
 
@@ -18,20 +18,26 @@
 설치에서는 `npm ci`(lockfile 고정)를 사용하세요. 명령어는 스캐폴딩 후 `package.json`의
 `scripts`를 기준으로 합니다(주요 스크립트 목록은 README 참고).
 
-## 예정된 프로젝트 구조
+## 프로젝트 구조
 
-경로 별칭: `@/*` → `src/*` (`tsconfig`의 `paths`와 Jest `moduleNameMapper` 양쪽에 설정).
+경로 별칭: `@/*` → `src/*`. **세 곳에 설정**되어야 한다 — `tsconfig`의 `paths`, Jest
+`moduleNameMapper`, 그리고 런타임(빌드는 `tsc-alias`, ts-node 실행은 `tsconfig-paths/register`).
+빌드 스크립트가 `nest build && tsc-alias` 인 이유다(별칭을 dist에서 상대경로로 치환).
 
 ```text
 src
-├── common      # filters(예외), interceptors(로깅/변환), decorators(@CurrentUser), guards(JwtAuthGuard, RolesGuard)
-├── config      # 환경 변수 검증·로드 (ConfigModule + 스키마 검증)
-├── database    # TypeORM 연결, DataSource, 마이그레이션
-├── modules     # 도메인 모듈: auth, users, health
-├── logger      # Winston 기반 로거
-├── app.module.ts
-└── main.ts     # 부트스트랩 (전역 파이프/필터, helmet, CORS, Swagger)
+├── common      # filters(예외), interceptors(로깅), decorators(@CurrentUser/@Roles), guards(JwtAuthGuard/RolesGuard), enums(Role)
+├── config      # env.validation(class-validator 스키마 + validate), configuration(load 팩토리)
+├── database    # database.module, data-source(CLI/마이그레이션용 standalone), migrations, seeds(admin)
+├── logger      # winston.config + LoggerModule (nest-winston)
+├── modules     # auth(JWT/passport-jwt), users(role 기반 RBAC), health(terminus)
+├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 APP_FILTER/APP_INTERCEPTOR/APP_GUARD
+└── main.ts     # 부트스트랩 (전역 ValidationPipe/필터, helmet, CORS, Swagger /api-docs, winston)
 ```
+
+비자명한 규칙: 환경 변수의 숫자 필드는 `@Type(() => Number)` 로 명시 변환한다
+(`enableImplicitConversion` 은 reflect 메타데이터 의존성 때문에 빌드/테스트 환경에 따라 불안정).
+Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터를 로드한다.
 
 ## 아키텍처 / 규칙
 

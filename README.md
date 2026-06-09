@@ -2,9 +2,9 @@
 
 JWT 인증, TypeORM, Swagger, 검증·로깅이 구성된 프로덕션 지향 NestJS 백엔드 템플릿.
 
-> **현재 상태:** 스캐폴딩 미완료. 이 저장소에는 아직 `README.md`·`CLAUDE.md`·`LICENSE`만 있고
-> 실제 소스 코드(`package.json`, `src/`)는 없습니다. 아래는 **의도된 설계**이며, 코드 생성 시
-> 이 문서를 기준으로 삼습니다.
+> **상태:** 핵심 스캐폴딩 완료 — 부트스트랩(`main.ts`)·JWT 인증·users·health·전역 검증/예외
+> 필터/로깅·TypeORM 마이그레이션·단위/e2e 테스트·Docker(MySQL)·GitHub Actions CI 가 구성되어
+> 있습니다. 미구현 항목은 하단 [Roadmap](#roadmap) 참고.
 
 ## Stack
 
@@ -37,6 +37,7 @@ Swagger: `http://localhost:3000/api-docs`
 ## Environment
 
 ```env
+NODE_ENV=development
 PORT=3000
 
 DB_HOST=localhost
@@ -45,8 +46,12 @@ DB_NAME=app
 DB_USERNAME=root
 DB_PASSWORD=password
 
-JWT_SECRET=             # openssl rand -base64 32
+JWT_SECRET=             # openssl rand -base64 32 (16자 이상 필수)
 JWT_EXPIRES_IN=1d
+
+CORS_ORIGIN=            # 콤마 구분, 비우면 전체 허용
+THROTTLE_TTL=60000      # rate limit 윈도(ms)
+THROTTLE_LIMIT=100      # 윈도당 최대 요청 수
 ```
 
 부팅 시 환경 변수를 검증하며, `JWT_SECRET`이 비어 있거나 너무 짧으면 실행을 중단합니다.
@@ -84,24 +89,31 @@ curl http://localhost:3000/users/me \
 
 ```text
 src
-├── common      # filters, interceptors, decorators, guards
-├── config      # env 검증 및 설정
-├── database    # 연결, 마이그레이션
-├── modules     # auth, users, health
-├── logger
+├── common      # filters, interceptors, decorators, guards, enums(Role)
+├── config      # env 검증(env.validation) 및 설정 로드(configuration)
+├── database    # database.module, data-source(CLI), migrations, seeds
+├── logger      # winston 설정 + LoggerModule
+├── modules     # auth(JWT), users(role/RBAC), health(terminus)
 ├── app.module.ts
-└── main.ts
+└── main.ts     # 부트스트랩 (전역 파이프/필터, helmet, CORS, Swagger, winston)
 ```
 
 ## Scripts
 
 ```bash
-npm run start:dev          # 개발 서버
+npm run start:dev          # 개발 서버 (watch)
+npm run build              # 컴파일 (nest build + tsc-alias 경로 별칭 변환)
+npm run lint               # ESLint
+npm run format             # Prettier --write
 npm run test               # 단위 테스트
-npm run test:e2e           # e2e 테스트
-npm run migration:generate # 마이그레이션 생성
+npm run test:e2e           # e2e 테스트 (실제 DB 필요)
+npm run migration:generate # 마이그레이션 생성 (-- src/database/migrations/<Name>)
 npm run migration:run      # 마이그레이션 실행
+npm run seed               # 기본 admin 계정 시드
 ```
+
+> **DB 초기화 순서:** `docker compose up -d mysql` → `npm run migration:run` → `npm run seed`.
+> 경로 별칭 `@/*` → `src/*` 는 `tsconfig`·Jest·런타임(`tsc-alias`/`tsconfig-paths`) 모두에 설정됩니다.
 
 ## Standard Error Response
 
