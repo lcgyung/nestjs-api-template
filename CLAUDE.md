@@ -9,8 +9,8 @@
 
 > **상태: 핵심 스캐폴딩 완료.** `package.json`·`src/`·`test/`·`docker-compose.yml`·CI 가 구성되어
 > 있고, `npm run build`/`lint`/`test` 가 통과합니다. 아래 규칙은 설계이자 현재 코드의 기준입니다.
-> 코드를 변경하면 이 문서도 실제 상태에 맞게 갱신하세요. 미구현 항목은 하단 "로드맵" 참고
-> (특히 TDD/품질 게이트 자동화는 아직 미구현 — [`docs/quality-gate.md`](docs/quality-gate.md) 청사진).
+> 코드를 변경하면 이 문서도 실제 상태에 맞게 갱신하세요.
+> (Claude Code 훅 자동화는 구현됨 — 현황·잔여 작업은 [`docs/claude-hooks-status.md`](docs/claude-hooks-status.md)).
 
 ## 패키지 매니저
 
@@ -92,11 +92,8 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
 - **단위 테스트** → Jest(`*.spec.ts`). 서비스는 Repository를 모킹하여 비즈니스 로직을 검증합니다.
 - **e2e 테스트** → `test/*.e2e-spec.ts`. 실제 DB(또는 테스트 컨테이너)가 필요하므로 빠른
   피드백 루프(저장 시 게이트)에는 포함하지 않습니다.
-- TDD/품질 게이트 자동화 설계는 [`docs/quality-gate.md`](docs/quality-gate.md) 참고.
+- Claude Code 훅 자동화 현황·잔여는 [`docs/claude-hooks-status.md`](docs/claude-hooks-status.md) 참고.
 
 ## 로드맵
 
 - Refresh Token · RBAC · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · GitHub Actions
-- [ ] **TDD/품질 게이트 자동화 (Claude Code skills + hooks)** — 편집 시 PostToolUse 자동 포맷 +
-      종료 시 Stop 게이트로 `test`/`lint`/`prettier --check` 차단. 상세 설계:
-      [`docs/quality-gate.md`](docs/quality-gate.md).
