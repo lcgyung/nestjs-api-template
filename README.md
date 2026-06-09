@@ -2,6 +2,10 @@
 
 JWT 인증, TypeORM, Swagger, 검증·로깅이 구성된 프로덕션 지향 NestJS 백엔드 템플릿.
 
+> **현재 상태:** 스캐폴딩 미완료. 이 저장소에는 아직 `README.md`·`CLAUDE.md`·`LICENSE`만 있고
+> 실제 소스 코드(`package.json`, `src/`)는 없습니다. 아래는 **의도된 설계**이며, 코드 생성 시
+> 이 문서를 기준으로 삼습니다.
+
 ## Stack
 
 NestJS · TypeScript · TypeORM · MySQL · JWT · Swagger · class-validator · Winston · ESLint · Prettier · Husky
@@ -46,6 +50,35 @@ JWT_EXPIRES_IN=1d
 ```
 
 부팅 시 환경 변수를 검증하며, `JWT_SECRET`이 비어 있거나 너무 짧으면 실행을 중단합니다.
+
+모드별 분리: `.env.development` / `.env.production`. 값 예시는 `.env.example` 참고.
+
+## Seed Account & Auth Flow
+
+시드 스크립트가 기본 관리자 계정을 생성합니다 (비밀번호 `password`).
+
+| 이메일            | 역할  | 비고      |
+| ----------------- | ----- | --------- |
+| admin@example.com | admin | 전체 권한 |
+
+로그인 → 토큰 발급 → 인증이 필요한 엔드포인트 호출:
+
+```bash
+# 1) 로그인 → accessToken 발급
+curl -X POST http://localhost:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@example.com","password":"password"}'
+
+# 2) 발급받은 토큰으로 보호된 엔드포인트 호출
+curl http://localhost:3000/users/me \
+  -H 'Authorization: Bearer <accessToken>'
+```
+
+## API / Swagger
+
+엔드포인트 탐색·시도는 Swagger UI(`/api-docs`)에서. 보호된 라우트는 우상단 **Authorize**에
+`Bearer <accessToken>`을 넣어 호출합니다. 요청 바디는 DTO + class-validator로 검증되며,
+검증 실패·예외는 아래 **표준 에러 응답** 형식으로 통일됩니다.
 
 ## Structure
 
