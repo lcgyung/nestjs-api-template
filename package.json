@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "JWT 인증·TypeORM·Swagger·검증·로깅이 구성된 프로덕션 지향 NestJS 백엔드 템플릿",
   "license": "MIT",
+  "packageManager": "pnpm@11.5.2",
   "engines": {
     "node": ">=20"
   },
@@ -20,10 +21,10 @@
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts",
-    "migration:generate": "npm run typeorm -- migration:generate",
+    "migration:generate": "pnpm run typeorm migration:generate",
     "migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create",
-    "migration:run": "npm run typeorm -- migration:run",
-    "migration:revert": "npm run typeorm -- migration:revert",
+    "migration:run": "pnpm run typeorm migration:run",
+    "migration:revert": "pnpm run typeorm migration:revert",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed.ts",
     "prepare": "husky"
   },

@@ -8,11 +8,11 @@ FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
 case "$FILE" in
   *.ts)
-    npx prettier --write "$FILE" >/dev/null 2>&1 || true
-    npx eslint --fix "$FILE"     >/dev/null 2>&1 || true
+    pnpm exec prettier --write "$FILE" >/dev/null 2>&1 || true
+    pnpm exec eslint --fix "$FILE" >/dev/null 2>&1 || true
     ;;
   *.json|*.md|*.yml|*.yaml)
-    npx prettier --write "$FILE" >/dev/null 2>&1 || true
+    pnpm exec prettier --write "$FILE" >/dev/null 2>&1 || true
     ;;
 esac
 exit 0
