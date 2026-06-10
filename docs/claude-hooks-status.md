@@ -9,8 +9,16 @@
 - **SessionStart** — 브랜치 + NestJS 규칙(컨트롤러 얇게 / DTO class-validator / ConfigService / any 금지) 주입.
 - **PreToolUse(Bash) 가드** — `rm -rf /|~|$HOME`, force push, `reset --hard`, **DB DROP/TRUNCATE**(대소문자 무시) 차단.
 - **PostToolUse 포맷** — 변경 `*.ts` 에 `prettier --write` + `eslint --fix`, `*.{json,md,yml,yaml}` 에 prettier.
-- **Stop 게이트(부분)** — `tsc --noEmit -p tsconfig.json` + `eslint "src/**/*.ts"`. 실패 시 exit 2 로 피드백.
-- **code-review 스킬 + code-reviewer 서브에이전트** — git diff 기반 백엔드 리뷰.
+- **Stop 게이트** — `tsc --noEmit` + `eslint`(둘 다 `pnpm exec`) 통과 후 `review-gate.sh` 가 변경된
+  `src/*.ts` 를 헤드리스 `claude -p --model haiku` 로 의미적 규약 리뷰(blocker 시 exit 2). **기본 비활성 —
+  `CC_AUTO_REVIEW=1` 일 때만**(`.claude/settings.json` 의 `env: { "CC_AUTO_REVIEW": "1" }` 또는 셸 export).
+  순수 bash 타임아웃(바이너리 불요)·연속 라운드 상한 2회·`claude` 미설치/타임아웃 시 비차단.
+- **code-review 스킬 + code-reviewer 서브에이전트** — git diff 기반 백엔드 리뷰. 스킬에 **프로젝트 고유
+  규약 점검**(api-endpoint 규약 연동) 절 추가.
+- **스킬 추가** — `api-endpoint`(엔드포인트 응답·예외·DTO 규약), `scaffold-module`(신규 모듈 스캐폴딩 —
+  `src/modules/users/` 미러링).
+- **패키지 매니저** — npm → **pnpm** 전환(`pnpm-lock.yaml`·`packageManager` 고정, `pnpm-workspace.yaml`
+  `allowBuilds: bcrypt`, CI/husky/훅 `pnpm exec`).
 
 ## 잔여 (블루프린트 대비 미구현/부분 — 다른 컨텍스트에서 진행)
 

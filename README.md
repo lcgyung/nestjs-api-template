@@ -26,10 +26,11 @@ NestJS · TypeScript · TypeORM · MySQL · JWT · Swagger · class-validator ·
 ```bash
 git clone https://github.com/<owner>/nestjs-api-template.git
 cd nestjs-api-template
-npm install
+corepack enable             # pnpm 활성화 (packageManager 필드 기준 버전 고정)
+pnpm install
 cp .env.example .env        # 값 채우기
 docker compose up -d mysql  # 로컬 DB
-npm run start:dev
+pnpm start:dev
 ```
 
 Swagger: `http://localhost:3000/api-docs`
@@ -101,18 +102,18 @@ src
 ## Scripts
 
 ```bash
-npm run start:dev          # 개발 서버 (watch)
-npm run build              # 컴파일 (nest build + tsc-alias 경로 별칭 변환)
-npm run lint               # ESLint
-npm run format             # Prettier --write
-npm run test               # 단위 테스트
-npm run test:e2e           # e2e 테스트 (실제 DB 필요)
-npm run migration:generate # 마이그레이션 생성 (-- src/database/migrations/<Name>)
-npm run migration:run      # 마이그레이션 실행
-npm run seed               # 기본 admin 계정 시드
+pnpm start:dev             # 개발 서버 (watch)
+pnpm build                 # 컴파일 (nest build + tsc-alias 경로 별칭 변환)
+pnpm lint                  # ESLint
+pnpm format                # Prettier --write
+pnpm test                  # 단위 테스트
+pnpm test:e2e              # e2e 테스트 (실제 DB 필요)
+pnpm migration:generate src/database/migrations/<Name>  # 마이그레이션 생성
+pnpm migration:run         # 마이그레이션 실행
+pnpm seed                  # 기본 admin 계정 시드
 ```
 
-> **DB 초기화 순서:** `docker compose up -d mysql` → `npm run migration:run` → `npm run seed`.
+> **DB 초기화 순서:** `docker compose up -d mysql` → `pnpm migration:run` → `pnpm seed`.
 > 경로 별칭 `@/*` → `src/*` 는 `tsconfig`·Jest·런타임(`tsc-alias`/`tsconfig-paths`) 모두에 설정됩니다.
 
 > **CI 의 DB 의존 e2e:** GitHub Actions 의 `e2e` 잡(마이그레이션·시드·e2e)은 기본 스킵이며,
@@ -130,6 +131,22 @@ npm run seed               # 기본 admin 계정 시드
   "path": "/users"
 }
 ```
+
+## Pagination / List Response
+
+목록(list) 엔드포인트는 `page`·`limit` 쿼리(`PaginationQueryDto` — 기본 `page=1`/`limit=20`,
+`limit` 최대 100)를 받아 아래 표준 형태(`{ items, meta }`)로 응답합니다. 단건/생성/수정 응답은
+엔티티를 직접 반환합니다(전역 `ClassSerializerInterceptor` 가 `@Exclude()` 필드를 제거).
+
+```json
+{
+  "items": [],
+  "meta": { "page": 1, "limit": 20, "total": 137, "totalPages": 7 }
+}
+```
+
+예) `GET /users?page=1&limit=10`. 응답 형태·예외 매핑·DTO 직렬화 등 세부 규약은
+[`.claude/skills/api-endpoint/SKILL.md`](.claude/skills/api-endpoint/SKILL.md) 참고.
 
 ## Roadmap
 
