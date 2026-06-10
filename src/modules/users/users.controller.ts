@@ -40,6 +40,7 @@ export class UsersController {
 
   @Post()
   @Roles(Role.Admin)
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '사용자 생성 (admin)' })
   create(@Body() dto: CreateUserDto): Promise<User> {
     return this.usersService.create(dto);
