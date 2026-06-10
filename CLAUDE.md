@@ -10,7 +10,7 @@
 > **상태: 핵심 스캐폴딩 완료.** `package.json`·`src/`·`test/`·`docker-compose.yml`·CI 가 구성되어
 > 있고, `pnpm build`/`lint`/`test` 가 통과합니다. 아래 규칙은 설계이자 현재 코드의 기준입니다.
 > 코드를 변경하면 이 문서도 실제 상태에 맞게 갱신하세요.
-> (Claude Code 훅 자동화는 구현됨 — 현황·잔여 작업은 [`docs/claude-hooks-status.md`](docs/claude-hooks-status.md)).
+> (Claude Code 훅 자동화는 구현됨 — 상세는 아래 `## Claude Code 자동화` 절 참고.)
 
 ## 패키지 매니저
 
@@ -121,7 +121,6 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
 - **단위 테스트** → Jest(`*.spec.ts`). 서비스는 Repository를 모킹하여 비즈니스 로직을 검증합니다.
 - **e2e 테스트** → `test/*.e2e-spec.ts`. 실제 DB(또는 테스트 컨테이너)가 필요하므로 빠른
   피드백 루프(저장 시 게이트)에는 포함하지 않습니다.
-- Claude Code 훅 자동화 현황·잔여는 [`docs/claude-hooks-status.md`](docs/claude-hooks-status.md) 참고.
 
 ## Claude Code 자동화 (`.claude/`)
 
@@ -130,13 +129,15 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
 - **SessionStart** → `session-context.sh`: 브랜치 등 컨텍스트를 주입.
 - **PreToolUse(Bash)** → `guard-bash.sh`: 파괴적 명령(`rm -rf /`, force push, `reset --hard` 등)을 차단.
 - **PostToolUse(Edit/Write)** → `format-changed-file.sh`: 변경된 `*.ts` 에 `eslint --fix` + `prettier` 자동 적용.
-- **Stop** → `gate.sh`: 세션 종료 전 `tsc --noEmit` + `eslint` 게이트(둘 다 `pnpm exec`). 통과하면
+- **Stop** → `gate.sh`: 세션 종료 전 정적 검사 `tsc --noEmit` + `eslint` + `prettier --check`(누적, 셋 다
+  `pnpm exec`) 후 **유닛 `jest`**(`*.spec.ts`만; e2e 는 별도 config 라 제외) 게이트. 모두 통과하면
   `review-gate.sh` 가 변경된 `src/*.ts` 를 헤드리스 `claude -p --model haiku` 로 의미적 규약 리뷰한다.
-  **기본 비활성 — `CC_AUTO_REVIEW=1` 일 때만 동작**(`.claude/settings.json` 의 `env` 또는 셸 export).
+  **리뷰는 기본 비활성 — `CC_AUTO_REVIEW=1` 일 때만 동작**(`.claude/settings.json` 의 `env` 또는 셸 export).
   규약 위반 blocker 시 `exit 2` 로 계속 수정 유도. 순수 bash 타임아웃(바이너리 불요)·연속 라운드 상한
-  2회·`claude` 미설치/타임아웃 시 비차단(graceful degrade). 단위 테스트는 기본 비활성.
+  2회·`claude` 미설치/타임아웃 시 비차단(graceful degrade).
 - **스킬(`.claude/skills/`)** → `code-review`(백엔드 리뷰 기준), `api-endpoint`(엔드포인트 응답·예외·DTO 규약),
-  `scaffold-module`(신규 모듈 스캐폴딩 — `src/modules/users/` 를 살아있는 템플릿으로 미러링). 작업 맥락에 맞춰 자동 로드된다.
+  `scaffold-module`(신규 모듈 스캐폴딩 — `src/modules/users/` 를 살아있는 템플릿으로 미러링),
+  `tdd`(`/tdd` — RED→GREEN→REFACTOR 사이클 안내). 작업 맥락에 맞춰 자동 로드된다.
 - `.claude/agents/code-reviewer.md` 서브에이전트도 함께 제공된다(`code-review` 스킬 기준 적용).
 
 ## 로드맵
