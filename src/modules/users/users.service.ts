@@ -2,6 +2,8 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
+import { PaginatedResponseDto } from '@/common/dto/paginated-response.dto';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { CreateUserDto } from '@/modules/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/modules/users/dto/update-user.dto';
 import { User } from '@/modules/users/entities/user.entity';
@@ -26,8 +28,13 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  findAll(): Promise<User[]> {
-    return this.usersRepository.find();
+  async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<User>> {
+    const [items, total] = await this.usersRepository.findAndCount({
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+      order: { id: 'DESC' },
+    });
+    return new PaginatedResponseDto(items, total, query);
   }
 
   async findOne(id: number): Promise<User> {

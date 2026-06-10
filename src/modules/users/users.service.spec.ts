@@ -9,6 +9,7 @@ import { UsersService } from '@/modules/users/users.service';
 describe('UsersService', () => {
   let service: UsersService;
   let findOne: jest.Mock;
+  let findAndCount: jest.Mock;
   let create: jest.Mock;
   let save: jest.Mock;
 
@@ -24,6 +25,7 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     findOne = jest.fn();
+    findAndCount = jest.fn();
     create = jest.fn();
     save = jest.fn();
 
@@ -32,7 +34,7 @@ describe('UsersService', () => {
         UsersService,
         {
           provide: getRepositoryToken(User),
-          useValue: { findOne, find: jest.fn(), create, save, remove: jest.fn() },
+          useValue: { findOne, findAndCount, create, save, remove: jest.fn() },
         },
       ],
     }).compile();
@@ -65,6 +67,22 @@ describe('UsersService', () => {
       expect(savedArg.password).not.toBe('password123');
       expect(await bcrypt.compare('password123', savedArg.password)).toBe(true);
       expect(save).toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll', () => {
+    it('findAndCount 로 페이지네이션하여 { items, meta } 형태로 반환한다', async () => {
+      findAndCount.mockResolvedValue([[mockUser], 1]);
+
+      const result = await service.findAll({ page: 2, limit: 10 });
+
+      expect(findAndCount).toHaveBeenCalledWith({
+        skip: 10,
+        take: 10,
+        order: { id: 'DESC' },
+      });
+      expect(result.items).toEqual([mockUser]);
+      expect(result.meta).toEqual({ page: 2, limit: 10, total: 1, totalPages: 1 });
     });
   });
 
