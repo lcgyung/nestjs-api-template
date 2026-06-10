@@ -18,6 +18,8 @@ description: >-
 - **목록(list)** → 반드시 `PaginatedResponseDto<T>`(`{ items, meta }`)로 반환한다.
   bare 배열(`T[]`)·`{ data }`·`{ results }` 금지.
 - 전역 `{ data }` 래핑은 **도입하지 않는다**(보일러플레이트·Swagger 타입 비용만 늘고 REST 관용도 깨짐).
+- **상태 코드 명시**: 생성 라우트는 `@HttpCode(HttpStatus.CREATED)`(201), 본문 없는 삭제는
+  `@HttpCode(HttpStatus.NO_CONTENT)`(204)를 명시한다. 조회/수정은 기본 200.
 
 ## 2. 페이지네이션 (모든 목록 엔드포인트)
 
@@ -72,8 +74,10 @@ findAll(@Query() query: PaginationQueryDto): Promise<PaginatedResponseDto<User>>
 - 엔티티와 응답 형태가 실제로 다를 때만 Response DTO 도입 →
   `plainToInstance(Dto, entity, { excludeExtraneousValues: true })`.
 - 입력은 항상 DTO + class-validator. 수정 DTO는 `PartialType` 유지.
+- **bcrypt 비밀번호 필드**는 `@MinLength(8)` 와 함께 `@MaxLength(72)`(bcrypt 72바이트 한계)를 **항상**
+  건다. 생성·로그인 등 비밀번호를 받는 모든 DTO 에 일관 적용(한쪽만 거는 드리프트 금지).
 
 ## 마무리
 
-- 검증: `pnpm build` · `pnpm lint` · `pnpm test`. 목록은 `GET /...?page=1&limit=10`으로 `{ items, meta }` 확인.
+- 검증: `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build`. 목록은 `GET /...?page=1&limit=10`으로 `{ items, meta }` 확인.
 - 신규 모듈 전체를 만드는 경우 `scaffold-module` 스킬을 함께 본다.
