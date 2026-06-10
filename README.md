@@ -19,6 +19,7 @@ NestJS · TypeScript · TypeORM · MySQL · JWT · Swagger · class-validator ·
 - Global Exception Filter (표준 에러 응답)
 - helmet · CORS · rate limiting
 - Winston 로깅
+- Health Check (Terminus)
 - ESLint + Prettier + Husky
 
 ## Quick Start
@@ -59,7 +60,7 @@ THROTTLE_LIMIT=100      # 윈도당 최대 요청 수
 
 부팅 시 환경 변수를 검증하며, `JWT_SECRET`이 비어 있거나 너무 짧으면 실행을 중단합니다.
 
-모드별 분리: `.env.development` / `.env.production`. 값 예시는 `.env.example` 참고.
+모드별 분리: `NODE_ENV` 에 따라 `.env.<mode>` → `.env` 순으로 로드합니다(기본 제공: `.env.development`). 값 예시는 `.env.example` 참고.
 
 ## Seed Account & Auth Flow
 
@@ -152,7 +153,7 @@ pnpm seed                  # 기본 admin 계정 시드
 
 ## Roadmap
 
-Refresh Token · RBAC · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · GitHub Actions
+Refresh Token · RBAC 확장 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry
 
 ## Contributing & Conventions
 
