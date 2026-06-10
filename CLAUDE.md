@@ -15,8 +15,32 @@
 ## 패키지 매니저
 
 이 프로젝트는 **npm**을 사용합니다(`package-lock.json` 추적). Node `>=20` 기준이며, CI/재현
-설치에서는 `npm ci`(lockfile 고정)를 사용하세요. 명령어는 스캐폴딩 후 `package.json`의
-`scripts`를 기준으로 합니다(주요 스크립트 목록은 README 참고).
+설치에서는 `npm ci`(lockfile 고정)를 사용하세요.
+
+## 자주 쓰는 명령어
+
+```bash
+npm run start:dev                # 개발 서버 (watch)
+npm run build                    # nest build + tsc-alias (dist 경로 별칭 치환)
+npm run lint                     # ESLint  /  npm run lint:fix 로 자동 수정
+npm run format                   # Prettier --write
+
+npm test                         # 단위 테스트 전체 (Jest, *.spec.ts)
+npm test -- users.service        # 파일명 패턴으로 일부만 실행
+npx jest src/modules/users/users.service.spec.ts          # 단일 파일
+npx jest -t "should hash password"                        # 테스트명(-t)으로 단일 케이스
+npm run test:cov                 # 커버리지
+npm run test:e2e                 # e2e (test/*.e2e-spec.ts, 실제 DB 필요)
+
+npx tsc --noEmit -p tsconfig.json   # 타입체크 단독 실행 (전용 npm 스크립트 없음; Stop 게이트가 사용)
+
+npm run migration:generate -- src/database/migrations/<Name>   # 엔티티 변경 후 생성
+npm run migration:run            # 마이그레이션 적용  /  migration:revert 로 롤백
+npm run seed                     # 기본 admin 계정 시드 (admin@example.com / password)
+```
+
+> **DB 초기화 순서:** `docker compose up -d mysql` → `npm run migration:run` → `npm run seed`.
+> 전체 스크립트·환경 변수·표준 에러 응답 형식은 [`README.md`](README.md) 참고.
 
 ## 프로젝트 구조
 
@@ -93,6 +117,16 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
 - **e2e 테스트** → `test/*.e2e-spec.ts`. 실제 DB(또는 테스트 컨테이너)가 필요하므로 빠른
   피드백 루프(저장 시 게이트)에는 포함하지 않습니다.
 - Claude Code 훅 자동화 현황·잔여는 [`docs/claude-hooks-status.md`](docs/claude-hooks-status.md) 참고.
+
+## Claude Code 자동화 (`.claude/`)
+
+`.claude/settings.json` 이 훅을 등록한다. 코드를 만질 때 아래 동작을 전제로 한다.
+
+- **SessionStart** → `session-context.sh`: 브랜치 등 컨텍스트를 주입.
+- **PreToolUse(Bash)** → `guard-bash.sh`: 파괴적 명령(`rm -rf /`, force push, `reset --hard` 등)을 차단.
+- **PostToolUse(Edit/Write)** → `format-changed-file.sh`: 변경된 `*.ts` 에 `eslint --fix` + `prettier` 자동 적용.
+- **Stop** → `gate.sh`: 세션 종료 전 `tsc --noEmit` + `eslint` 게이트. 실패하면 `exit 2` 로 계속 수정을 유도한다(테스트는 기본 비활성, 주석 처리됨).
+- `.claude/agents/code-reviewer.md`, `.claude/skills/code-review/` 도 함께 제공된다.
 
 ## 로드맵
 
