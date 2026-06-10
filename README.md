@@ -115,6 +115,10 @@ npm run seed               # 기본 admin 계정 시드
 > **DB 초기화 순서:** `docker compose up -d mysql` → `npm run migration:run` → `npm run seed`.
 > 경로 별칭 `@/*` → `src/*` 는 `tsconfig`·Jest·런타임(`tsc-alias`/`tsconfig-paths`) 모두에 설정됩니다.
 
+> **CI 의 DB 의존 e2e:** GitHub Actions 의 `e2e` 잡(마이그레이션·시드·e2e)은 기본 스킵이며,
+> 리포지토리 변수 `RUN_E2E=true`(Settings → Secrets and variables → Actions → Variables) 일 때만
+> 실행됩니다. `lint·build·단위 테스트` 잡은 항상 실행됩니다.
+
 ## Standard Error Response
 
 ```json
