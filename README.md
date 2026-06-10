@@ -154,6 +154,12 @@ pnpm seed                  # 기본 admin 계정 시드
 
 Refresh Token · RBAC · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · GitHub Actions
 
+## Contributing & Conventions
+
+브랜치 전략(`main` ← `dev` ← `feat/fix/chore/*`), 커밋 컨벤션(Conventional Commits),
+버전 규칙(SemVer), 로컬 게이트는 [`CONTRIBUTING.md`](CONTRIBUTING.md)를 참고하세요.
+변경 이력은 [`CHANGELOG.md`](CHANGELOG.md)에서 확인할 수 있습니다.
+
 ## License
 
 MIT
