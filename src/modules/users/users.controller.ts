@@ -13,13 +13,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
+import { PaginatedResponseDto } from '@/common/dto/paginated-response.dto';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { Role } from '@/common/enums/role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
-import { PaginatedResponseDto } from '@/common/dto/paginated-response.dto';
-import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { CreateUserDto } from '@/modules/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/modules/users/dto/update-user.dto';
 import { User } from '@/modules/users/entities/user.entity';

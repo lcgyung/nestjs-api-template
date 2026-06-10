@@ -2,6 +2,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 
 export default tseslint.config(
@@ -62,6 +63,8 @@ export default tseslint.config(
         { selector: 'objectLiteralProperty', format: null },
         { selector: 'import', format: ['camelCase', 'PascalCase'] },
       ],
+      // 타입 전용 임포트는 `import type` 으로 통일(auto-fix). 빌드/번들 경계 명확화.
+      '@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }],
       // 타입 정의는 interface 로 통일(기존 JwtPayload·ErrorResponseBody 와 일치).
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
       // 배열 타입은 T[] 로 통일.
@@ -70,6 +73,17 @@ export default tseslint.config(
       '@typescript-eslint/prefer-nullish-coalescing': 'error',
       '@typescript-eslint/prefer-optional-chain': 'error',
       eqeqeq: ['error', 'always'],
+    },
+  },
+  {
+    // import/export 정렬 — external → node: → 패키지 → @/ 별칭 → 상대경로 순(결정적·auto-fix).
+    plugins: { 'simple-import-sort': simpleImportSort },
+    rules: {
+      'simple-import-sort/imports': [
+        'error',
+        { groups: [['^\\u0000'], ['^node:'], ['^@?\\w'], ['^@/'], ['^\\.']] },
+      ],
+      'simple-import-sort/exports': 'error',
     },
   },
   {

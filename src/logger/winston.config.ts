@@ -1,4 +1,4 @@
-import { utilities as nestWinstonModuleUtilities, WinstonModuleOptions } from 'nest-winston';
+import { utilities as nestWinstonModuleUtilities, type WinstonModuleOptions } from 'nest-winston';
 import * as winston from 'winston';
 
 const isProduction = process.env.NODE_ENV === 'production';

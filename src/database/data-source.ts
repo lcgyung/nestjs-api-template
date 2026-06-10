@@ -1,6 +1,7 @@
 import 'reflect-metadata';
-import { join } from 'path';
+
 import { config as loadEnv } from 'dotenv';
+import { join } from 'path';
 import { DataSource } from 'typeorm';
 
 // CLI(마이그레이션/시드)는 Nest 컨텍스트 밖에서 실행되므로 직접 .env 를 로드한다.

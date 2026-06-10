@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcrypt';
-import { AppDataSource } from '@/database/data-source';
+
 import { Role } from '@/common/enums/role.enum';
+import { AppDataSource } from '@/database/data-source';
 import { User } from '@/modules/users/entities/user.entity';
 
 /**
