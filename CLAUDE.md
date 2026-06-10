@@ -57,13 +57,16 @@ src
 ├── database    # database.module, data-source(CLI/마이그레이션용 standalone), migrations, seeds(admin)
 ├── logger      # winston.config + LoggerModule (nest-winston)
 ├── modules     # auth(JWT/passport-jwt), users(role 기반 RBAC), health(terminus)
-├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 APP_FILTER/APP_INTERCEPTOR/APP_GUARD
+├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 APP_GUARD(Throttler)/APP_FILTER(AllExceptions)/APP_INTERCEPTOR(Logging+ClassSerializer)
 └── main.ts     # 부트스트랩 (전역 ValidationPipe/필터, helmet, CORS, Swagger /api-docs, winston)
 ```
 
-비자명한 규칙: 환경 변수의 숫자 필드는 `@Type(() => Number)` 로 명시 변환한다
-(`enableImplicitConversion` 은 reflect 메타데이터 의존성 때문에 빌드/테스트 환경에 따라 불안정).
-Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터를 로드한다.
+비자명한 규칙(검증 경로가 둘로 나뉜다): 환경 변수 검증(`config/env.validation.ts`)은 부팅 시
+`plainToInstance` + `validateSync` 로 **전역 `ValidationPipe` 와 무관하게** 직접 수행한다. 이 경로엔
+implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명시 변환한다(reflect 메타데이터 의존
+제거 → 빌드/테스트 환경 무관). 반면 **요청 DTO** 용 전역 `ValidationPipe`(`main.ts`)는
+`transformOptions.enableImplicitConversion: true` 를 켠다 — 둘을 혼동해 한쪽 설정을 다른 쪽에 맞추지
+말 것. Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터를 로드한다.
 
 ## 아키텍처 / 규칙
 
@@ -84,7 +87,10 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
   ```
 
 - **인증** → JWT 기반. 비밀번호는 bcrypt로 해싱하고 평문/해시를 응답에 노출하지 않습니다.
-  보호된 라우트는 가드로, 인증 사용자 주입은 커스텀 데코레이터로 처리합니다.
+  보호된 라우트는 가드로, 인증 사용자 주입은 커스텀 데코레이터로 처리합니다. 응답에서 민감 필드 제거는
+  전역 `ClassSerializerInterceptor`(`app.module.ts` 에 `APP_INTERCEPTOR` 로 등록) + 엔티티의
+  `@Exclude()`(예: `User.password`) 조합으로 강제된다. **새 엔티티에 비밀/토큰 등 민감 필드를 추가하면
+  반드시 `@Exclude()` 를 붙인다.**
 
   ```typescript
   @UseGuards(JwtAuthGuard)
