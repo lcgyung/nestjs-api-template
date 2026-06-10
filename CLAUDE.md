@@ -15,7 +15,7 @@
 ## 패키지 매니저
 
 이 프로젝트는 **pnpm**을 사용합니다(`pnpm-lock.yaml` 추적, `package.json`의 `packageManager`
-필드로 버전 고정). Node `>=20` 기준이며, CI/재현 설치에서는 `pnpm install --frozen-lockfile`을
+필드로 버전 고정). Node `>=22.13` 기준이며(pnpm 11.5.2 가 요구), CI/재현 설치에서는 `pnpm install --frozen-lockfile`을
 사용하세요. bcrypt 같은 **네이티브 빌드 스크립트 허용은 `pnpm-workspace.yaml`의 `allowBuilds`**로
 관리합니다(pnpm 10+ 부터 `package.json`의 `pnpm` 필드는 더 이상 읽지 않음).
 

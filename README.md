@@ -23,6 +23,8 @@ NestJS · TypeScript · TypeORM · MySQL · JWT · Swagger · class-validator ·
 
 ## Quick Start
 
+> **요구사항:** Node `>=22.13` (pnpm 11.5.2 기준), corepack 활성화.
+
 ```bash
 git clone https://github.com/<owner>/nestjs-api-template.git
 cd nestjs-api-template
