@@ -146,7 +146,9 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
 `.claude/settings.json` 이 훅을 등록한다. 코드를 만질 때 아래 동작을 전제로 한다.
 
 - **SessionStart** → `session-context.sh`: 브랜치 등 컨텍스트를 주입.
-- **PreToolUse(Bash)** → `guard-bash.sh`: 파괴적 명령(`rm -rf /`, force push, `reset --hard` 등)을 차단.
+- **PreToolUse(Bash)** → `guard-bash.sh`(파괴적 명령 차단: `rm -rf /`, force push, `reset --hard`,
+  DROP/TRUNCATE) + `guard-psql.sh`(psql 은 `-c '<SELECT...>'` 단일 읽기 구문만 허용 — db-reader 가드,
+  케이스 테스트는 `guard-psql.test.sh`). `permissions.deny` 가 sudo·publish 등을 이중 차단.
 - **PostToolUse(Edit/Write)** → `format-changed-file.sh`: 변경된 `*.ts` 에 `eslint --fix` + `prettier` 자동 적용.
 - **Stop** → `gate.sh`: 세션 종료 전 정적 검사 `tsc --noEmit` + `eslint` + `prettier --check`(누적, 셋 다
   `pnpm exec`) 후 **유닛 `jest`**(`*.spec.ts`만; e2e 는 별도 config 라 제외) 게이트. 모두 통과하면
@@ -162,7 +164,9 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   `docs/api-conventions.md` 의 절차 래퍼), `scaffold-module`(신규 모듈 스캐폴딩 —
   `src/modules/users/` 를 살아있는 템플릿으로 미러링), `tdd`(`/tdd` — RED→GREEN→REFACTOR).
   작업 맥락에 맞춰 자동 로드된다.
-- `.claude/agents/code-reviewer.md` 서브에이전트도 함께 제공된다(`code-review` 스킬 기준 적용).
+- **서브에이전트(`.claude/agents/`)** → 역할별 모델 차등 고정(판단=opus, 실행=haiku — ADR 0010):
+  `code-reviewer`(opus)·`security-reviewer`(opus, 읽기전용+memory)·`migration-reviewer`(opus)·
+  `test-runner`(haiku, 실패만 요약)·`db-reader`(haiku, psql SELECT 전용 — guard-psql 이 강제).
 
 ## 로드맵
 
