@@ -185,13 +185,14 @@ pnpm openapi:generate      # docs/openapi.json 생성 (DB 불필요 — 프론�
 }
 ```
 
-예) `GET /users?page=1&limit=10`. 응답 형태·예외 매핑·DTO 직렬화 등 세부 규약은
-[`.claude/skills/api-endpoint/SKILL.md`](.claude/skills/api-endpoint/SKILL.md) 참고.
+예) `GET /users?page=1&limit=10`. 응답 형태·예외 매핑·DTO 직렬화 등 세부 규약 정본은
+[`docs/api-conventions.md`](docs/api-conventions.md) 참고.
 
 ## Roadmap
 
 - Refresh Token(회전·서버측 폐기 — [ADR 0006](docs/adr/0006-refresh-토큰-회전-보류.md)로 보류 중) ·
-  SSO/소셜 로그인 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹)
+  SSO/소셜 로그인 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹) ·
+  도메인 용어집(도메인이 users 외로 늘어날 때)
 - **인증 프로파일(MVP/Production)** — 인증을 _자격증명 전략(ID/PW·외부 본인인증·SSO) + 공통 세션 골격_
   으로 보고, MVP 프로파일에선 외부 본인인증 전략만 켜고 일부 보안 자동화(SAST·SBOM·위협모델 풀버전 등)를
   보류한다. ID/PW 로그인은 삭제하지 않고 비활성 보존한다. 근거·범위는
