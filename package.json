@@ -9,13 +9,13 @@
   },
   "scripts": {
     "build": "nest build && tsc-alias -p tsconfig.build.json",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"{src,test,scripts}/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
-    "lint": "eslint \"{src,test}/**/*.ts\"",
-    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,test,scripts}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,test,scripts}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -27,6 +27,7 @@
     "migration:run": "pnpm run typeorm migration:run",
     "migration:revert": "pnpm run typeorm migration:revert",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed.ts",
+    "openapi:generate": "ts-node -r tsconfig-paths/register scripts/generate-openapi.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -119,6 +120,7 @@
       "src/database/",
       "src/logger/winston\\.config\\.ts$",
       "src/config/configuration\\.ts$",
+      "src/config/swagger\\.config\\.ts$",
       "current-user\\.decorator\\.ts$",
       "\\.dto\\.ts$",
       "\\.entity\\.ts$"

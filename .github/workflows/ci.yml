@@ -22,6 +22,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm test:cov
+      # OpenAPI 스펙 드리프트 게이트 — 커밋된 docs/openapi.json 이 코드와 일치해야 한다
+      - run: pnpm openapi:generate
+      - run: git diff --exit-code -- docs/openapi.json
 
   security:
     name: Security (gitleaks · pnpm audit)

@@ -1,11 +1,12 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { WinstonModule } from 'nest-winston';
 
 import { AppModule } from '@/app.module';
+import { buildSwaggerConfig } from '@/config/swagger.config';
 import { winstonConfig } from '@/logger/winston.config';
 
 async function bootstrap(): Promise<void> {
@@ -34,14 +35,8 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // Swagger
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('NestJS API Template')
-    .setDescription('JWT 인증·TypeORM·Swagger 기반 프로덕션 지향 API 템플릿')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  // Swagger — 설정은 scripts/generate-openapi.ts 와 공유 (swagger.config.ts)
+  const document = SwaggerModule.createDocument(app, buildSwaggerConfig());
   SwaggerModule.setup('api-docs', app, document);
 
   const port = configService.get<number>('port') ?? 3000;
