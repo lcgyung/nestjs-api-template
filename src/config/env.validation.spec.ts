@@ -4,9 +4,9 @@ describe('env validate()', () => {
   // process.env 처럼 모든 값이 문자열인 상태를 모사한다.
   const baseEnv = {
     DB_HOST: 'localhost',
-    DB_PORT: '3306',
+    DB_PORT: '5432',
     DB_NAME: 'app',
-    DB_USERNAME: 'root',
+    DB_USERNAME: 'postgres',
     DB_PASSWORD: 'password',
     JWT_SECRET: 'a-sufficiently-long-secret-1234',
     JWT_EXPIRES_IN: '1d',
@@ -17,7 +17,7 @@ describe('env validate()', () => {
     const config = validate(baseEnv);
     expect(config.PORT).toBe(3000);
     expect(typeof config.PORT).toBe('number');
-    expect(config.DB_PORT).toBe(3306);
+    expect(config.DB_PORT).toBe(5432);
     expect(typeof config.DB_PORT).toBe('number');
     expect(config.NODE_ENV).toBe(NodeEnv.Development);
   });
@@ -33,5 +33,21 @@ describe('env validate()', () => {
 
   it('PORT 범위를 벗어나면 throw 한다', () => {
     expect(() => validate({ ...baseEnv, PORT: '70000' })).toThrow(/PORT/);
+  });
+
+  it('production 에서 CORS_ORIGIN 이 비면 throw 한다', () => {
+    expect(() => validate({ ...baseEnv, NODE_ENV: 'production', CORS_ORIGIN: '' })).toThrow(
+      /CORS_ORIGIN/,
+    );
+  });
+
+  it('production 이라도 CORS_ORIGIN 이 있으면 통과한다', () => {
+    const config = validate({
+      ...baseEnv,
+      NODE_ENV: 'production',
+      CORS_ORIGIN: 'https://app.example.com',
+    });
+    expect(config.NODE_ENV).toBe(NodeEnv.Production);
+    expect(config.CORS_ORIGIN).toBe('https://app.example.com');
   });
 });

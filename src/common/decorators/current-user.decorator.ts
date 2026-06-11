@@ -1,6 +1,7 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { Request } from 'express';
-import { User } from '@/modules/users/entities/user.entity';
+import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
+import { type Request } from 'express';
+
+import { type User } from '@/modules/users/entities/user.entity';
 
 /**
  * 인증된 사용자(또는 특정 필드)를 핸들러 인자로 주입한다.

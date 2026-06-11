@@ -1,4 +1,4 @@
-import { Role } from '@/common/enums/role.enum';
+import { type Role } from '@/common/enums/role.enum';
 
 export interface JwtPayload {
   /** subject — 사용자 ID */

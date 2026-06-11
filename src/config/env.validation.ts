@@ -40,7 +40,7 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(0)
   @Max(65535)
-  DB_PORT = 3306;
+  DB_PORT = 5432;
 
   @IsString()
   @IsNotEmpty()
@@ -87,6 +87,13 @@ export function validate(config: Record<string, unknown>): EnvironmentVariables 
       .map((error) => Object.values(error.constraints ?? {}).join(', '))
       .join('\n');
     throw new Error(`환경 변수 검증 실패:\n${messages}`);
+  }
+
+  // 운영에서 CORS_ORIGIN 이 비면 모든 오리진 허용(+credentials)으로 빠지므로 부팅을 막는다.
+  if (validatedConfig.NODE_ENV === NodeEnv.Production && !validatedConfig.CORS_ORIGIN) {
+    throw new Error(
+      '환경 변수 검증 실패:\nCORS_ORIGIN 은(는) production 에서 필수입니다(와일드카드 오리진 차단).',
+    );
   }
 
   return validatedConfig;

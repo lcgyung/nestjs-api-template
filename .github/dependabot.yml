@@ -1,0 +1,25 @@
+# 주간 의존성 업데이트 — minor/patch 는 묶고 major 만 개별 PR.
+# 커밋 메시지는 Conventional Commits(chore(deps): ...) 정합.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope

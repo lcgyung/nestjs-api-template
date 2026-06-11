@@ -31,23 +31,27 @@ src/modules/<feature>/
 
 ## 각 파일이 따라야 할 패턴 (users/ 기준)
 
-- **컨트롤러** → `@ApiTags`/`@Controller('<feature>')`, 보호가 필요하면 `@UseGuards(JwtAuthGuard, RolesGuard)`
-  - `@Roles(...)`, 각 라우트에 `@ApiOperation`. 로직은 전부 서비스로 위임. `@Param('id', ParseIntPipe)`.
+- **컨트롤러** → `@ApiTags`/`@Controller('<feature>')`. 전역 가드가 이미 모든 라우트를 보호한다 —
+  **`@UseGuards` 재부착 금지**, `@Roles(...)`/`@Public()` 데코레이터만 사용.
+  - 각 라우트에 `@ApiOperation`. 로직은 전부 서비스로 위임. `@Param('id', ParseIntPipe)`.
+  - **상태 코드 명시**: 생성 라우트에 `@HttpCode(HttpStatus.CREATED)`, 본문 없는 삭제에
+    `@HttpCode(HttpStatus.NO_CONTENT)`(204).
 - **서비스** → `@InjectRepository(Entity) private readonly repo: Repository<Entity>` 직접 주입(커스텀
   리포지토리 클래스 만들지 않음). 없음→`NotFoundException`, 중복→`ConflictException`, **한국어 메시지**.
+  - bcrypt 가공 회차 등 매직넘버는 `private static readonly SALT_ROUNDS = 10` 처럼 **UPPER_CASE 상수**로.
 - **엔티티** → `@PrimaryGeneratedColumn`, 민감 컬럼에 `@Exclude()`, `@CreateDateColumn`/`@UpdateDateColumn`,
-  필드 정의 단언 `!`. enum 컬럼은 `{ type: 'enum', enum: ... }`.
+  필드 정의 단언 `!`. enum 컬럼은 `{ type: 'enum', enum: ... }`. **enum 멤버는 PascalCase**(`Role.User`).
 - **DTO** → create 는 `@IsXxx` + `@ApiProperty`/`@ApiPropertyOptional`. update 는 `PartialType(CreateDto)`.
 - **spec** → `getRepositoryToken(Entity)` 를 `useValue` jest mock 으로 제공. 예외/핵심 로직 케이스 검증.
 - **모듈** → `imports: [TypeOrmModule.forFeature([Entity])]`, service `providers`/`exports`.
   생성 후 `AppModule`(또는 상위 모듈) `imports` 에 새 모듈을 등록한다.
 
-## 엔드포인트 규약은 api-endpoint 스킬
+## 엔드포인트 규약
 
-라우트/서비스 메서드의 **응답 형태·페이지네이션·예외 타입·직렬화**는 `api-endpoint` 스킬을 따른다.
-특히 목록 라우트는 `PaginationQueryDto` + `PaginatedResponseDto<T>`(`{ items, meta }`)로 만든다.
+라우트/서비스 메서드의 **응답 형태·페이지네이션·예외 타입·직렬화**는 정본
+`docs/api-conventions.md`(`api-endpoint` 스킬이 절차 래퍼)를 그대로 적용한다.
 
 ## 마무리
 
 - 새 모듈을 상위 모듈 `imports` 에 등록했는지 확인.
-- `pnpm build` · `pnpm lint` · `pnpm test` 통과 확인.
+- `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build` 통과 확인.

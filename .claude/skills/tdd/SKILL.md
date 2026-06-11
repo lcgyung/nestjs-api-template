@@ -47,8 +47,7 @@ description: >-
 ## 3. REFACTOR — 초록 유지하며 정리
 
 - 테스트가 통과하는 상태를 유지한 채 중복 제거·명명 개선·경계 정리.
-- `code-review` 스킬 기준을 셀프 점검: 컨트롤러 thin, DTO+class-validator, 직렬화로 내부 노출 차단,
-  민감 컬럼 `@Exclude()`, 관계 명시적(`eager: true` 금지).
+- `code-review` 스킬 기준으로 셀프 점검한다(의미적 규약 정본: `docs/api-conventions.md`).
 - 리팩터 후 전체 유닛 테스트로 회귀 확인:
 
   ```bash
