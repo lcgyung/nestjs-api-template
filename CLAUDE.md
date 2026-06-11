@@ -151,9 +151,11 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   `CC_AUTO_REVIEW=1`(settings.json `env`)로 상시 활성(끄려면 값 제거/`0`).
 - **모드별 분기(보상 통제)** → 훅이 stdin 의 `permission_mode` 를 읽어 강도를 조절한다(사람 확인이
   빠지는 모드일수록 더 조인다). `plan` → `gate.sh` 가 정적검사·테스트·리뷰를 **스킵**(변경 0이라 무의미).
-  `default`/`plan` 외(`acceptEdits`/`auto` 등) → `guard-bash.sh` 가 `git push`·작업 트리 유실 명령을
-  **추가 차단**하고, `review-gate.sh` 는 `CC_AUTO_REVIEW` 옵트인과 **무관하게 리뷰 강제**(라운드 상한 +1).
-  파괴적 명령(`rm -rf /`·force push 등)과 `settings.json` 의 정적 `permissions.deny` 는 **모드 무관 고정**.
+  `default`/`plan` 외(`acceptEdits`/`auto` 등) → `guard-bash.sh` 가 작업 트리 유실 명령을 **추가 차단**하고
+  `git push` 는 **최근 사용자 프롬프트(트랜스크립트 `last-prompt`)에 git/배포 의도가 있을 때만 허용**
+  (없으면 자율 push 로 보아 차단 — `guard-bash.test.sh` 로 케이스 고정), `review-gate.sh` 는
+  `CC_AUTO_REVIEW` 옵트인과 **무관하게 리뷰 강제**(라운드 상한 +1). 파괴적 명령(`rm -rf /`·force push 등)과
+  `settings.json` 의 정적 `permissions.deny` 는 **모드 무관 고정**.
 - **경로 스코프 규칙(`.claude/rules/`)** → `controllers`·`dto-validation`·`migrations`·`auth`·`testing`.
   frontmatter `paths` 글롭에 맞는 파일을 만질 때만 자동 로드된다(CLAUDE.md 비대화 방지) —
   이 문서의 요지 뒤에 숨은 상세 규칙은 거기에 있다.
