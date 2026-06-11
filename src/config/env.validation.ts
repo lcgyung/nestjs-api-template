@@ -40,7 +40,7 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(0)
   @Max(65535)
-  DB_PORT = 3306;
+  DB_PORT = 5432;
 
   @IsString()
   @IsNotEmpty()

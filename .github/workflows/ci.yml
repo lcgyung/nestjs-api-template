@@ -78,31 +78,31 @@ jobs:
           path: sbom.json
 
   e2e:
-    name: E2E (MySQL)
+    name: E2E (PostgreSQL)
     # DB 의존 단계(마이그레이션/시드/e2e)는 기본 스킵. 리포지토리 변수 RUN_E2E=true 일 때만 실행.
     # 활성화: Settings → Secrets and variables → Actions → Variables → New repository variable
     #   Name: RUN_E2E  /  Value: true
     if: ${{ vars.RUN_E2E == 'true' }}
     runs-on: ubuntu-latest
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:17-alpine
         env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: app
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: app
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -ppassword"
+          --health-cmd="pg_isready -U postgres -d app"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
     env:
       NODE_ENV: test
       DB_HOST: 127.0.0.1
-      DB_PORT: 3306
+      DB_PORT: 5432
       DB_NAME: app
-      DB_USERNAME: root
+      DB_USERNAME: postgres
       DB_PASSWORD: password
       JWT_SECRET: ci-test-secret-at-least-16-chars
       JWT_EXPIRES_IN: 1d

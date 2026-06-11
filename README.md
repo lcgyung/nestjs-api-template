@@ -3,12 +3,12 @@
 JWT 인증, TypeORM, Swagger, 검증·로깅이 구성된 프로덕션 지향 NestJS 백엔드 템플릿.
 
 > **상태:** 핵심 스캐폴딩 완료 — 부트스트랩(`main.ts`)·JWT 인증·users·health·전역 검증/예외
-> 필터/로깅·TypeORM 마이그레이션·단위/e2e 테스트·Docker(MySQL)·GitHub Actions CI 가 구성되어
+> 필터/로깅·TypeORM 마이그레이션·단위/e2e 테스트·Docker(PostgreSQL)·GitHub Actions CI 가 구성되어
 > 있습니다. 미구현 항목은 하단 [Roadmap](#roadmap) 참고.
 
 ## Stack
 
-NestJS · TypeScript · TypeORM · MySQL · JWT · Swagger · class-validator · Winston · ESLint · Prettier · Husky
+NestJS · TypeScript · TypeORM · PostgreSQL · JWT · Swagger · class-validator · Winston · ESLint · Prettier · Husky
 
 ## Features
 
@@ -34,7 +34,7 @@ cd nestjs-api-template
 corepack enable             # pnpm 활성화 (packageManager 필드 기준 버전 고정)
 pnpm install
 cp .env.example .env        # 값 채우기
-docker compose up -d mysql  # 로컬 DB
+docker compose up -d postgres  # 로컬 DB
 pnpm start:dev
 ```
 
@@ -47,9 +47,9 @@ NODE_ENV=development
 PORT=3000
 
 DB_HOST=localhost
-DB_PORT=3306
+DB_PORT=5432
 DB_NAME=app
-DB_USERNAME=root
+DB_USERNAME=postgres
 DB_PASSWORD=password
 
 JWT_SECRET=             # openssl rand -base64 32 (16자 이상 필수)
@@ -108,7 +108,7 @@ flowchart LR
   VP --> C["Controllers<br/>auth · users · health"]
   C --> S[Services]
   S --> R[TypeORM Repository]
-  R --> DB[(MySQL)]
+  R --> DB[(PostgreSQL)]
 
   subgraph CROSS["횡단 관심사 (전역 등록)"]
     F[AllExceptionsFilter]
@@ -151,7 +151,7 @@ pnpm seed                  # 기본 admin 계정 시드
 pnpm openapi:generate      # docs/openapi.json 생성 (DB 불필요 — 프론트 타입 생성 소스)
 ```
 
-> **DB 초기화 순서:** `docker compose up -d mysql` → `pnpm migration:run` → `pnpm seed`.
+> **DB 초기화 순서:** `docker compose up -d postgres` → `pnpm migration:run` → `pnpm seed`.
 > 경로 별칭 `@/*` → `src/*` 는 `tsconfig`·Jest·런타임(`tsc-alias`/`tsconfig-paths`) 모두에 설정됩니다.
 
 > **CI 의 DB 의존 e2e:** GitHub Actions 의 `e2e` 잡(마이그레이션·시드·e2e)은 기본 스킵이며,

@@ -21,3 +21,4 @@
 | [0005](0005-jwt-쿠키-전환-csrf-전략.md)            | JWT httpOnly 쿠키 전환 + Bearer 폴백 + SameSite CSRF      | 승인 |
 | [0006](0006-refresh-토큰-회전-보류.md)             | Refresh 토큰 회전·서버측 폐기 보류                        | 승인 |
 | [0007](0007-인증-프로파일-분리-자격증명-전략.md)   | 인증 프로파일(MVP/Production) 분리 + 단계적 자격증명 전략 | 승인 |
+| [0008](0008-mysql-postgresql-전환.md)              | MySQL → PostgreSQL 전환                                   | 승인 |

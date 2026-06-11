@@ -46,7 +46,7 @@ pnpm openapi:generate            # docs/openapi.json 생성 (DB 불필요 — Da
 > **컨트롤러/DTO/라우트를 변경하면 `pnpm openapi:generate` 로 `docs/openapi.json` 을 재생성해
 > 함께 커밋한다.** CI 가 `git diff --exit-code` 로 스펙 드리프트를 차단한다.
 
-> **DB 초기화 순서:** `docker compose up -d mysql` → `pnpm migration:run` → `pnpm seed`.
+> **DB 초기화 순서:** `docker compose up -d postgres` → `pnpm migration:run` → `pnpm seed`.
 > 전체 스크립트·환경 변수·표준 에러 응답 형식은 [`README.md`](README.md) 참고.
 
 ## 프로젝트 구조
