@@ -6,6 +6,33 @@
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-11
+
+Claude Code 하네스의 모드별 보상 통제 정교화(auto push 의도 게이트)와 의존성·CI 정비를 담은 패치 릴리스.
+
+### Changed
+
+- **모드별 하네스 분기(보상 통제)** — 훅이 stdin 의 `permission_mode` 를 읽어 강도를 조절한다.
+  `plan` 모드는 `gate.sh` 정적검사·테스트·리뷰를 스킵(변경 0), `default`/`plan` 외 모드
+  (`acceptEdits`/`auto` 등)는 `guard-bash.sh` 가 작업 트리 유실 명령을 추가 차단하고
+  `review-gate.sh` 가 옵트인과 무관하게 리뷰를 강제(라운드 상한 +1). 파괴적 명령·정적 deny 는 모드
+  무관 고정.
+- **auto 모드 push 를 사용자 의도 기반으로 허용** — auto/acceptEdits 모드의 `git push` 무조건 차단을,
+  최근 사용자 프롬프트(트랜스크립트 `last-prompt`)에 git/배포 의도가 있으면 허용하고 없으면 자율
+  실행으로 보아 차단하도록 정교화. force push·작업 트리 유실 명령은 차단 유지. `guard-bash.test.sh` 추가.
+- **CI 노이즈 감소** — Dependabot 갱신 주기를 주간→월간으로 조정하고 `github-actions` 업데이트를
+  단일 그룹 PR 로 묶음.
+
+### Fixed
+
+- `gitleaks` CI 잡에 `pull-requests:read` 권한 부여(PR 컨텍스트 시크릿 스캔 정합).
+
+### Dependencies
+
+- `typeorm` 0.3.30 → 1.0.0, `eslint` 9 → 10, `globals` 15 → 17, `class-validator`·`bcrypt` 갱신.
+- GitHub Actions: `actions/checkout` 4→6, `actions/setup-node` 4→6, `actions/upload-artifact` 4→7,
+  `pnpm/action-setup` 4→6, `gitleaks/gitleaks-action` 2→3.
+
 ## [0.2.0] - 2026-06-11
 
 보안·인증 하드닝과 PostgreSQL 전환, e2e 격리, 그리고 Claude Code 하네스 확장을 담은 릴리스.
@@ -85,6 +112,7 @@
 - 초기 버전으로 구조/API 가 변경될 수 있습니다(0.x).
 - 로드맵: Refresh Token · RBAC 확장 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry.
 
-[Unreleased]: https://github.com/lcgyung/nestjs-api-template/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/lcgyung/nestjs-api-template/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/lcgyung/nestjs-api-template/compare/v0.2.0...v0.2.2
 [0.2.0]: https://github.com/lcgyung/nestjs-api-template/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/lcgyung/nestjs-api-template/releases/tag/v0.1.0
