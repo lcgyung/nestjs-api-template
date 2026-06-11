@@ -121,6 +121,7 @@
       "src/logger/winston\\.config\\.ts$",
       "src/config/configuration\\.ts$",
       "src/config/swagger\\.config\\.ts$",
+      "src/common/pipes/validation-pipe\\.options\\.ts$",
       "current-user\\.decorator\\.ts$",
       "\\.dto\\.ts$",
       "\\.entity\\.ts$"

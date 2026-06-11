@@ -3,6 +3,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from '@/app.module';
+import { VALIDATION_PIPE_OPTIONS } from '@/common/pipes/validation-pipe.options';
 
 /**
  * 실제 DB(또는 테스트 컨테이너) + 시드된 admin 계정이 필요하다.
@@ -17,7 +18,7 @@ describe('Auth & Users (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
     await app.init();
   });
 
@@ -57,6 +58,19 @@ describe('Auth & Users (e2e)', () => {
 
   it('토큰 없이 /users/me → 401', () => {
     return request(app.getHttpServer()).get('/users/me').expect(401);
+  });
+
+  it('DTO 에 없는 여분 필드 → 400 (forbidNonWhitelisted)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'admin@example.com', password: 'password', isAdmin: true })
+      .expect(400);
+
+    expect(res.body).toMatchObject({
+      statusCode: 400,
+      error: 'Bad Request',
+      path: '/auth/login',
+    });
   });
 
   it('검증 실패한 로그인 바디 → 400 (표준 에러 형식)', async () => {

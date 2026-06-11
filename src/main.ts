@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { WinstonModule } from 'nest-winston';
 
 import { AppModule } from '@/app.module';
+import { VALIDATION_PIPE_OPTIONS } from '@/common/pipes/validation-pipe.options';
 import { buildSwaggerConfig } from '@/config/swagger.config';
 import { winstonConfig } from '@/logger/winston.config';
 
@@ -26,14 +27,8 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  // 전역 검증 파이프 (정의되지 않은 속성 제거 + 타입 변환)
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: true },
-    }),
-  );
+  // 전역 검증 파이프 — 옵션은 e2e 와 공유 (validation-pipe.options.ts)
+  app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
 
   // Swagger — 설정은 scripts/generate-openapi.ts 와 공유 (swagger.config.ts)
   const document = SwaggerModule.createDocument(app, buildSwaggerConfig());
