@@ -1,4 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
@@ -12,11 +13,15 @@ describe('AuthService', () => {
   let service: AuthService;
   let findByEmail: jest.Mock;
   let signAsync: jest.Mock;
+  let decode: jest.Mock;
+  let configGet: jest.Mock;
   let userRecord: User;
 
   beforeEach(async () => {
     findByEmail = jest.fn();
     signAsync = jest.fn();
+    decode = jest.fn();
+    configGet = jest.fn();
 
     userRecord = {
       id: 1,
@@ -32,7 +37,8 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: UsersService, useValue: { findByEmail } },
-        { provide: JwtService, useValue: { signAsync } },
+        { provide: JwtService, useValue: { signAsync, decode } },
+        { provide: ConfigService, useValue: { get: configGet } },
       ],
     }).compile();
 
@@ -68,6 +74,41 @@ describe('AuthService', () => {
       await expect(
         service.login({ email: 'admin@example.com', password: 'wrong-password' }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('buildCookieOptions', () => {
+    it('개발 환경에서는 secure=false, maxAge 는 토큰 exp/iat 차이로 산출한다', () => {
+      configGet.mockReturnValue('development');
+      decode.mockReturnValue({ iat: 1_000, exp: 1_000 + 3_600 });
+
+      const opts = service.buildCookieOptions('signed.jwt.token');
+
+      expect(opts).toMatchObject({
+        httpOnly: true,
+        secure: false,
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 3_600_000,
+      });
+    });
+
+    it('production 환경에서는 secure=true, 토큰이 없으면 세션 쿠키(maxAge 없음)', () => {
+      configGet.mockReturnValue('production');
+
+      const opts = service.buildCookieOptions();
+
+      expect(opts.secure).toBe(true);
+      expect(opts.maxAge).toBeUndefined();
+    });
+
+    it('토큰 디코드에 실패하면 maxAge 없이(세션 쿠키) 반환한다', () => {
+      configGet.mockReturnValue('development');
+      decode.mockReturnValue(null);
+
+      const opts = service.buildCookieOptions('bad.token');
+
+      expect(opts.maxAge).toBeUndefined();
     });
   });
 });

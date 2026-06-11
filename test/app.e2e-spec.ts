@@ -1,5 +1,6 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
+import cookieParser from 'cookie-parser';
 import request from 'supertest';
 
 import { AppModule } from '@/app.module';
@@ -18,6 +19,7 @@ describe('Auth & Users (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(cookieParser());
     app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
     await app.init();
   });
@@ -38,7 +40,28 @@ describe('Auth & Users (e2e)', () => {
     return request(app.getHttpServer()).get('/health/readiness').expect(200);
   });
 
-  it('로그인 → accessToken → /users/me 흐름', async () => {
+  it('로그인 → httpOnly 쿠키 발급 → 쿠키로 /users/me 접근', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'admin@example.com', password: 'password' })
+      .expect(200);
+
+    const cookies = login.headers['set-cookie'] as unknown as string[];
+    const accessCookie = cookies.find((cookie) => cookie.startsWith('access_token='));
+    expect(accessCookie).toBeDefined();
+    expect(accessCookie).toMatch(/HttpOnly/i);
+    expect(accessCookie).toMatch(/SameSite=Strict/i);
+
+    const me = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Cookie', cookies)
+      .expect(200);
+
+    expect(me.body.email).toBe('admin@example.com');
+    expect(me.body.password).toBeUndefined();
+  });
+
+  it('로그인 바디의 accessToken 으로 Bearer 폴백 접근', async () => {
     const login = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'admin@example.com', password: 'password' })
@@ -53,7 +76,15 @@ describe('Auth & Users (e2e)', () => {
       .expect(200);
 
     expect(me.body.email).toBe('admin@example.com');
-    expect(me.body.password).toBeUndefined();
+  });
+
+  it('로그아웃 → 쿠키 만료 처리', async () => {
+    const res = await request(app.getHttpServer()).post('/auth/logout').expect(200);
+
+    const cookies = res.headers['set-cookie'] as unknown as string[];
+    const cleared = cookies.find((cookie) => cookie.startsWith('access_token='));
+    expect(cleared).toBeDefined();
+    expect(res.body).toEqual({ success: true });
   });
 
   it('토큰 없이 /users/me → 401', () => {

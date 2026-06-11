@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { WinstonModule } from 'nest-winston';
 
@@ -19,6 +20,9 @@ async function bootstrap(): Promise<void> {
 
   // 보안 헤더
   app.use(helmet());
+
+  // httpOnly 인증 쿠키 파싱(jwt.strategy 의 cookieExtractor 가 req.cookies 에 의존)
+  app.use(cookieParser());
 
   // CORS — CORS_ORIGIN 이 비어 있으면 전체 허용
   const corsOrigin = configService.get<string>('cors.origin');

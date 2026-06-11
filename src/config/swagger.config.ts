@@ -10,5 +10,6 @@ export function buildSwaggerConfig(): Omit<OpenAPIObject, 'paths'> {
     .setDescription('JWT 인증·TypeORM·Swagger 기반 프로덕션 지향 API 템플릿')
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth('access_token')
     .build();
 }

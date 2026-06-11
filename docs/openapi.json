@@ -20,7 +20,22 @@
             "description": ""
           }
         },
-        "summary": "로그인 → accessToken 발급",
+        "summary": "로그인 → access_token httpOnly 쿠키 발급(+ 폴백용 바디 반환)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "로그아웃 → access_token 쿠키 제거",
         "tags": [
           "auth"
         ]
@@ -728,6 +743,11 @@
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "type": "http"
+      },
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token"
       }
     },
     "schemas": {
