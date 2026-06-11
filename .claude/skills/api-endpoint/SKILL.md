@@ -15,11 +15,8 @@ description: >-
 ## 절차
 
 1. `docs/api-conventions.md` 를 읽는다(응답 형태·페이지네이션·예외 표·쿼리/관계·DTO/직렬화·IDOR).
-2. 라우트/서비스를 정본 규약대로 구현한다. 특히:
-   - 목록 → `PaginatedResponseDto<T>`, 단건/생성/수정 → 엔티티 직접 반환
-   - 생성 201 / 본문 없는 삭제 204 를 `@HttpCode` 로 명시
-   - 입력은 DTO + class-validator(수정은 `PartialType`), 비밀번호는 `@MinLength(8)`+`@MaxLength(72)`
-   - 본인 리소스 엔드포인트는 서비스 계층 소유권 검증(IDOR)
+2. 라우트/서비스를 정본 규약(§1 응답 형태 · §2 페이지네이션 · §3 예외 · §5 DTO/직렬화 ·
+   §6 소유권/IDOR)대로 그대로 구현한다 — 요지를 여기 중복하지 않는다.
 3. 컨트롤러/DTO/라우트가 바뀌었으면 `pnpm openapi:generate` 로 스펙을 재생성해 함께 커밋한다.
 
 ## 마무리 검증

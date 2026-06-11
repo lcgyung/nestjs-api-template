@@ -75,14 +75,10 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
 
 - **레이어링** → Controller(얇게: 라우팅·DTO 바인딩) → Service(비즈니스 로직) →
   Repository(TypeORM). 컨트롤러에 비즈니스 로직을 두지 말고 서비스로 위임합니다.
-- **입력 검증** → 모든 입력은 DTO + class-validator로 검증. 전역 `ValidationPipe` 옵션의 정본은
-  `src/common/pipes/validation-pipe.options.ts`(`VALIDATION_PIPE_OPTIONS`) — main.ts 와 e2e 가
-  공유하므로 한쪽만 고치지 말 것. 상세 규칙은 `.claude/rules/dto-validation.md`(해당 파일 작업 시
-  자동 로드).
+- **입력 검증** → 모든 입력은 DTO + class-validator. `ValidationPipe` 옵션 정본 위치·bcrypt 쌍규칙
+  등 상세는 `.claude/rules/dto-validation.md`(해당 파일 작업 시 자동 로드).
 - **인증/인가** → JWT(httpOnly 쿠키 + Bearer 폴백 — ADR 0005), **deny-by-default**(전역
-  `APP_GUARD`). 인증 없이 열 라우트만 `@Public()`, 역할 제한은 `@Roles(Role.Admin)`,
-  **`@UseGuards(JwtAuthGuard)` 재부착 금지**. 민감 필드는 엔티티에 `@Exclude()` 필수.
-  소유권 검증(IDOR) 등 상세는 `.claude/rules/auth.md`.
+  `APP_GUARD`). 데코레이터 사용법·소유권 검증(IDOR) 등 상세는 `.claude/rules/auth.md`.
 - **에러 응답** → Global Exception Filter가 모든 예외를 표준 형식으로 통일합니다
   (형식은 README "Standard Error Response" 참고 — 이 문서에서 중복 정의하지 않음).
 - **응답·세부 규약** → 성공 응답 형태(단건=엔티티 직접 반환, 목록=`{ items, meta }` 페이지네이션),
@@ -95,17 +91,15 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   **request id** 는 `RequestIdMiddleware`(AsyncLocalStorage)가 시작하고 winston format 이 모든
   로그에 자동 주입한다 — 로거 호출부에서 id 를 수동으로 넘기지 말 것.
 - **보안** → `main.ts`에서 helmet(HSTS) · CORS · rate limiting(ThrottlerModule) · payload 100kb 제한 ·
-  `trust proxy` 를 적용합니다. CORS_ORIGIN 은 **production 에서 필수**(미설정 시 부팅 차단), Swagger
-  `/api-docs` 는 prod 에서 비활성. 시크릿 스캔은 gitleaks + **SAST 는 Semgrep**(CI `sast` 잡, private
-  Free repo 라 CodeQL 대신) + 의존성 취약점은 `pnpm audit --prod`(CI) + `eslint-plugin-security` +
-  SBOM(CycloneDX). 수정 불가 CVE 는 `pnpm-workspace.yaml` `auditConfig.ignoreCves` 에 사유와 함께 기록.
-  로그인은 전용 `@Throttle`(분당 5)로 brute-force 를 완화하고, 성공/실패는 이메일 마스킹 감사 로그를 남긴다.
-  시큐어 코딩 체크리스트는 [`docs/secure-harness-nestjs.md`](docs/secure-harness-nestjs.md), 위협 모델은
-  [`docs/threat-model.md`](docs/threat-model.md).
-- **마이그레이션(비자명 규칙)** → 운영에서 `synchronize: true`를 **사용하지 않습니다**. 앱과
-  분리된 `DataSource`를 두고 마이그레이션으로만 스키마를 변경합니다. `migration:generate`는
-  컴파일된 `DataSource`를 기준으로 동작하므로, 엔티티 변경 후 생성 → 검토 → `migration:run`
-  순서를 지킵니다.
+  `trust proxy`. CORS_ORIGIN 은 **production 에서 필수**(미설정 시 부팅 차단), Swagger `/api-docs` 는
+  prod 비활성. 시크릿 스캔 gitleaks + **SAST Semgrep**(CI `sast` 잡, private Free repo 라 CodeQL 대신) +
+  `pnpm audit --prod`(CI) + `eslint-plugin-security` + SBOM(CycloneDX). 수정 불가 CVE 는
+  `pnpm-workspace.yaml` `auditConfig.ignoreCves` 에 사유와 함께 기록. 로그인 brute-force 완화·감사
+  로그는 `.claude/rules/auth.md`. 체크리스트: [`docs/secure-harness-nestjs.md`](docs/secure-harness-nestjs.md),
+  위협 모델: [`docs/threat-model.md`](docs/threat-model.md).
+- **마이그레이션(비자명 규칙)** → `synchronize: true` 금지 — 앱과 분리된 `DataSource` 기준으로
+  스키마는 마이그레이션으로만 변경(생성 → 검토 → `migration:run`).
+  상세: `.claude/rules/migrations.md` · `migration-workflow` 스킬.
 
 ## 코드 컨벤션
 
@@ -150,13 +144,11 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   DROP/TRUNCATE) + `guard-psql.sh`(psql 은 `-c '<SELECT...>'` 단일 읽기 구문만 허용 — db-reader 가드,
   케이스 테스트는 `guard-psql.test.sh`). `permissions.deny` 가 sudo·publish 등을 이중 차단.
 - **PostToolUse(Edit/Write)** → `format-changed-file.sh`: 변경된 `*.ts` 에 `eslint --fix` + `prettier` 자동 적용.
-- **Stop** → `gate.sh`: 세션 종료 전 정적 검사 `tsc --noEmit` + `eslint` + `prettier --check`(누적, 셋 다
-  `pnpm exec`) 후 **유닛 `jest`**(`*.spec.ts`만; e2e 는 별도 config 라 제외) 게이트. 모두 통과하면
-  `review-gate.sh` 가 변경된 `src/*.ts` 를 헤드리스 `claude -p --model haiku` 로 의미적 규약 리뷰한다.
-  **리뷰는 `.claude/settings.json` 의 `env` 에서 `CC_AUTO_REVIEW=1` 로 상시 활성화**되어 있다(끄려면 값
-  제거/`0`, 셸 export 로도 토글 가능).
-  규약 위반 blocker 시 `exit 2` 로 계속 수정 유도. 순수 bash 타임아웃(바이너리 불요)·연속 라운드 상한
-  2회·`claude` 미설치/타임아웃 시 비차단(graceful degrade).
+- **Stop** → `gate.sh`: 세션 종료 전 정적 검사 `tsc --noEmit` + `eslint` + `prettier --check` 후
+  **유닛 `jest`**(`*.spec.ts`만; e2e 제외) 게이트. 통과 시 `review-gate.sh` 가 변경된 `src/*.ts` 를
+  헤드리스 haiku 로 의미 리뷰한다 — **규약 정본(`docs/api-conventions.md`) 전문을 런타임
+  주입**(동기화 불요). blocker 시 `exit 2`, 라운드 상한 2회, `claude` 미설치/타임아웃 시 비차단.
+  `CC_AUTO_REVIEW=1`(settings.json `env`)로 상시 활성(끄려면 값 제거/`0`).
 - **경로 스코프 규칙(`.claude/rules/`)** → `controllers`·`dto-validation`·`migrations`·`auth`·`testing`.
   frontmatter `paths` 글롭에 맞는 파일을 만질 때만 자동 로드된다(CLAUDE.md 비대화 방지) —
   이 문서의 요지 뒤에 숨은 상세 규칙은 거기에 있다.

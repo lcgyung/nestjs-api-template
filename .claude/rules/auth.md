@@ -1,7 +1,6 @@
 ---
 paths:
-  - 'src/modules/auth/**'
-  - 'src/modules/users/**'
+  - 'src/modules/**'
   - 'src/common/guards/**'
   - 'src/common/decorators/**'
 ---
