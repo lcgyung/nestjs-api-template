@@ -1,5 +1,6 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 
@@ -16,7 +17,11 @@ describe('Auth & Users (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      // 한 IP 에서 다수 로그인 호출이 일어나 로그인 throttle(분당 5)에 걸리므로 e2e 에선 비활성.
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.use(cookieParser());
@@ -89,6 +94,42 @@ describe('Auth & Users (e2e)', () => {
 
   it('토큰 없이 /users/me → 401', () => {
     return request(app.getHttpServer()).get('/users/me').expect(401);
+  });
+
+  it('일반 사용자 토큰 → admin 라우트 403, 본인 /users/me 200', async () => {
+    const userEmail = 'e2e-user@example.com';
+    const userPassword = 'password1234';
+
+    const adminLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'admin@example.com', password: 'password' })
+      .expect(200);
+    const adminToken = adminLogin.body.accessToken as string;
+
+    // admin 으로 일반 사용자 생성 — 이미 존재하면(반복 실행) 409 이며 아래 로그인이 핵심이라 무시.
+    await request(app.getHttpServer())
+      .post('/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: userEmail, password: userPassword, role: 'user' });
+
+    const userLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: userEmail, password: userPassword })
+      .expect(200);
+    const userToken = userLogin.body.accessToken as string;
+
+    // admin 전용 목록 라우트 → 403
+    await request(app.getHttpServer())
+      .get('/users')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+
+    // 본인 정보는 인증만 있으면 200
+    const me = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+    expect(me.body.email).toBe(userEmail);
   });
 
   it('DTO 에 없는 여분 필드 → 400 (forbidNonWhitelisted)', async () => {

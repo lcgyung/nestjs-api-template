@@ -52,6 +52,9 @@
         },
         "security": [
           {
+            "access_token": []
+          },
+          {
             "bearer": []
           }
         ],
@@ -81,6 +84,9 @@
           }
         },
         "security": [
+          {
+            "access_token": []
+          },
           {
             "bearer": []
           }
@@ -122,6 +128,9 @@
         },
         "security": [
           {
+            "access_token": []
+          },
+          {
             "bearer": []
           }
         ],
@@ -150,6 +159,9 @@
           }
         },
         "security": [
+          {
+            "access_token": []
+          },
           {
             "bearer": []
           }
@@ -188,6 +200,9 @@
         },
         "security": [
           {
+            "access_token": []
+          },
+          {
             "bearer": []
           }
         ],
@@ -214,6 +229,9 @@
           }
         },
         "security": [
+          {
+            "access_token": []
+          },
           {
             "bearer": []
           }
