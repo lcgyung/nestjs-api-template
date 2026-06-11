@@ -4,7 +4,7 @@
 # - 변경 없음 / claude 미설치 / 타임아웃 → 막지 않음(exit 0, graceful degrade).
 # - 규약 위반 blocker → exit 2 로 계속 수정 유도. 연속 라운드 상한(MAX_ROUNDS).
 # - 타임아웃은 순수 bash 래퍼(timeout 바이너리 불요, bash 3.2 호환).
-# - 규약 정본은 .claude/skills/api-endpoint/SKILL.md. 여기엔 haiku 1-shot 용 "요지"만 인라인한다.
+# - 규약 정본은 docs/api-conventions.md. 여기엔 haiku 1-shot 용 "요지"만 인라인한다(정본 변경 시 동기화).
 set -uo pipefail
 
 [ -z "${CC_AUTO_REVIEW:-}" ] && exit 0 # 기본 off — 옵트인일 때만 동작
@@ -45,7 +45,7 @@ for f in $CHANGED; do
 done
 [ -z "$DIFF" ] && exit 0
 
-# 5) 규약 요지 인라인 프롬프트(정본: .claude/skills/api-endpoint/SKILL.md)
+# 5) 규약 요지 인라인 프롬프트(정본: docs/api-conventions.md)
 read -r -d '' PROMPT <<'EOF' || true
 너는 이 NestJS 템플릿의 코드 리뷰어다. 아래 변경분(diff)을 이 프로젝트 규약 기준으로만 검토하라.
 규약 요지: 목록 응답=PaginatedResponseDto({items,meta}) — bare 배열/{data}/{results} 금지;

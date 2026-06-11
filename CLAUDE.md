@@ -68,12 +68,8 @@ src
 scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.json exclude; dist/main.js 경로 보존)
 ```
 
-비자명한 규칙(검증 경로가 둘로 나뉜다): 환경 변수 검증(`config/env.validation.ts`)은 부팅 시
-`plainToInstance` + `validateSync` 로 **전역 `ValidationPipe` 와 무관하게** 직접 수행한다. 이 경로엔
-implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명시 변환한다(reflect 메타데이터 의존
-제거 → 빌드/테스트 환경 무관). 반면 **요청 DTO** 용 전역 `ValidationPipe`(`main.ts`)는
-`transformOptions.enableImplicitConversion: true` 를 켠다 — 둘을 혼동해 한쪽 설정을 다른 쪽에 맞추지
-말 것. Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터를 로드한다.
+비자명한 규칙: **검증 경로가 둘로 나뉜다** — env 검증(명시 `@Type` 변환)과 요청 DTO 검증(implicit
+변환)은 설정을 서로 맞추면 안 된다. 상세는 [`docs/architecture.md`](docs/architecture.md) 참고.
 
 ## 아키텍처 / 규칙
 
@@ -81,42 +77,18 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
   Repository(TypeORM). 컨트롤러에 비즈니스 로직을 두지 말고 서비스로 위임합니다.
 - **입력 검증** → 모든 입력은 DTO + class-validator로 검증. 전역 `ValidationPipe` 옵션의 정본은
   `src/common/pipes/validation-pipe.options.ts`(`VALIDATION_PIPE_OPTIONS`) — main.ts 와 e2e 가
-  공유하므로 한쪽만 고치지 말 것. `whitelist` + `forbidNonWhitelisted`(DTO 에 없는 필드는 silent
-  strip 이 아니라 400) + `transform`.
-
-  ```typescript
-  export class CreateUserDto {
-    @IsEmail()
-    email: string;
-
-    @IsString()
-    @MinLength(8)
-    password: string;
-  }
-  ```
-
-- **인증** → JWT 기반. 비밀번호는 bcrypt로 해싱하고 평문/해시를 응답에 노출하지 않습니다.
-  토큰은 **httpOnly 쿠키(`access_token`)로 발급**하고 `jwt.strategy` 가 쿠키 우선·Bearer 헤더 폴백으로
-  추출한다(모바일·서버 간 호출 유지 — [ADR 0005](docs/adr/0005-jwt-쿠키-전환-csrf-전략.md)). 인증은
-  **deny-by-default** — `JwtAuthGuard`·`RolesGuard` 가 `app.module.ts` 에 전역 `APP_GUARD` 로 등록되어
-  모든 라우트를 보호한다. 인증 없이 열 라우트만 `@Public()` 을 명시하고(로그인·로그아웃·health), 역할
-  제한은 `@Roles(Role.Admin)` 으로 건다 — **컨트롤러에 `@UseGuards(JwtAuthGuard)` 를 다시 붙이지 말 것.**
-  응답 민감 필드 제거는 전역 `ClassSerializerInterceptor` + 엔티티의 `@Exclude()`(예: `User.password`)
-  조합으로 강제된다. **새 엔티티에 비밀/토큰 등 민감 필드를 추가하면 반드시 `@Exclude()` 를 붙인다.**
-
-  ```typescript
-  // 전역 가드가 보호하므로 @UseGuards 불필요. 인증된 사용자는 @CurrentUser 로 주입.
-  @Get('me')
-  getMe(@CurrentUser() user: User) {
-    return user;
-  }
-  ```
-
+  공유하므로 한쪽만 고치지 말 것. 상세 규칙은 `.claude/rules/dto-validation.md`(해당 파일 작업 시
+  자동 로드).
+- **인증/인가** → JWT(httpOnly 쿠키 + Bearer 폴백 — ADR 0005), **deny-by-default**(전역
+  `APP_GUARD`). 인증 없이 열 라우트만 `@Public()`, 역할 제한은 `@Roles(Role.Admin)`,
+  **`@UseGuards(JwtAuthGuard)` 재부착 금지**. 민감 필드는 엔티티에 `@Exclude()` 필수.
+  소유권 검증(IDOR) 등 상세는 `.claude/rules/auth.md`.
 - **에러 응답** → Global Exception Filter가 모든 예외를 표준 형식으로 통일합니다
   (형식은 README "Standard Error Response" 참고 — 이 문서에서 중복 정의하지 않음).
 - **응답·세부 규약** → 성공 응답 형태(단건=엔티티 직접 반환, 목록=`{ items, meta }` 페이지네이션),
-  예외 타입 매핑, 쿼리/관계, DTO 직렬화 등 세부 규약은
-  `api-endpoint` 스킬을 따릅니다(엔드포인트 작업 시 자동 로드됨 — 규약 정본이며 본문은 이 문서에 중복하지 않음).
+  예외 타입 매핑, 쿼리/관계, DTO 직렬화 등 세부 규약의 **정본은
+  [`docs/api-conventions.md`](docs/api-conventions.md)**(`api-endpoint` 스킬이 절차 래퍼로 참조 —
+  본문은 이 문서에 중복하지 않음).
 - **설정/검증** → 환경 변수는 부팅 시 스키마로 검증하여 잘못된 설정이면 즉시 중단(fail-fast)합니다.
   특히 `JWT_SECRET`이 비었거나 너무 짧으면 실행을 막습니다(변수 목록은 README 참고).
 - **로깅** → Winston. 요청 로깅은 인터셉터로, 애플리케이션 로그는 Nest `Logger` 대체 구현으로.
@@ -145,23 +117,10 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 
 ### 머신이 강제하는 일관성 규칙
 
-아래는 *관례가 아니라 린터/타입체커가 강제*한다 — 어기면 `pnpm lint`/`typecheck`(따라서 Stop
-게이트·CI·커밋 훅)가 실패한다. 새 코드를 이 스타일에 맞추면 통과한다.
-
-- **네이밍**(`@typescript-eslint/naming-convention`) — 파일은 kebab-case(`*.service.ts` 등),
-  클래스/타입/인터페이스는 PascalCase(+역할 suffix: `…Controller`/`…Service`/`…Dto`), **enum 멤버는
-  PascalCase**(`Role.User`), `private static readonly` 상수는 UPPER_CASE(`SALT_ROUNDS`), 변수/멤버는
-  camelCase. 예외로 데코레이터 팩토리·`DataSource` const 는 PascalCase, env 미러링 클래스
-  (`EnvironmentVariables`)의 프로퍼티는 UPPER_CASE 가 허용된다.
-- **import 정렬**(`simple-import-sort`) — external → `@/` 별칭 → 상대경로 순, 그룹 간 빈 줄. **auto-fix**
-  되므로 저장/커밋 시 자동 정렬된다.
-- **타입 전용 import 는 `import type`**(`consistent-type-imports`, auto-fix). 단 `emitDecoratorMetadata`
-  로 DI/데코레이터 메타데이터에 쓰이는 타입(`Repository<T>` 등)은 값 import 로 남는다(룰이 자동 판별).
-- **기타** — 타입 정의는 `interface`, 배열은 `T[]`, `??`/`?.` 선호, `===` 만, 미사용 지역변수/파라미터
-  금지(`noUnusedLocals`/`noUnusedParameters`; 의도적 미사용은 `_` prefix), 떠도는 Promise 금지
-  (`no-floating-promises` error).
-- **커밋 메시지** — Conventional Commits(`commitlint` + `.husky/commit-msg`). `<type>(<scope>): <subject>`.
-  한국어·영문 혼용 subject 허용(`subject-case` 비활성), type/scope·헤더 길이는 강제. 상세는 `CONTRIBUTING.md`.
+네이밍(kebab-case 파일·PascalCase enum 멤버 등)·import 정렬·`import type`·커밋 메시지
+(Conventional Commits)는 *관례가 아니라 린터/타입체커/commitlint 가 강제*한다 — 어기면
+`pnpm lint`/`typecheck`(따라서 Stop 게이트·CI·커밋 훅)가 실패한다. 상세 목록은
+[`CONTRIBUTING.md`](CONTRIBUTING.md) "머신이 강제하는 스타일" 절 참고.
 
 ### 의도적으로 채택하지 않은 것 (고치지 말 것)
 
@@ -196,16 +155,16 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
   제거/`0`, 셸 export 로도 토글 가능).
   규약 위반 blocker 시 `exit 2` 로 계속 수정 유도. 순수 bash 타임아웃(바이너리 불요)·연속 라운드 상한
   2회·`claude` 미설치/타임아웃 시 비차단(graceful degrade).
-- **스킬(`.claude/skills/`)** → `code-review`(백엔드 리뷰 기준), `api-endpoint`(엔드포인트 응답·예외·DTO 규약),
-  `scaffold-module`(신규 모듈 스캐폴딩 — `src/modules/users/` 를 살아있는 템플릿으로 미러링),
-  `tdd`(`/tdd` — RED→GREEN→REFACTOR 사이클 안내). 작업 맥락에 맞춰 자동 로드된다.
+- **경로 스코프 규칙(`.claude/rules/`)** → `controllers`·`dto-validation`·`migrations`·`auth`·`testing`.
+  frontmatter `paths` 글롭에 맞는 파일을 만질 때만 자동 로드된다(CLAUDE.md 비대화 방지) —
+  이 문서의 요지 뒤에 숨은 상세 규칙은 거기에 있다.
+- **스킬(`.claude/skills/`)** → `code-review`(백엔드 리뷰 기준), `api-endpoint`(정본
+  `docs/api-conventions.md` 의 절차 래퍼), `scaffold-module`(신규 모듈 스캐폴딩 —
+  `src/modules/users/` 를 살아있는 템플릿으로 미러링), `tdd`(`/tdd` — RED→GREEN→REFACTOR).
+  작업 맥락에 맞춰 자동 로드된다.
 - `.claude/agents/code-reviewer.md` 서브에이전트도 함께 제공된다(`code-review` 스킬 기준 적용).
 
 ## 로드맵
 
-- Refresh Token(회전·서버측 폐기 — [ADR 0006](docs/adr/0006-refresh-토큰-회전-보류.md) 로 보류 중) ·
-  SSO/소셜 로그인 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹)
-- **인증 프로파일(MVP/Production)** — 인증을 _자격증명 전략(ID/PW·외부 본인인증·SSO) + 공통 세션 골격_
-  으로 보고, MVP 프로파일에선 외부 본인인증 전략만 켜고 일부 보안 자동화(SAST·SBOM·위협모델 풀버전 등)를
-  보류한다. ID/PW 로그인은 삭제하지 않고 비활성 보존한다. 근거·범위는
-  [ADR 0007](docs/adr/0007-인증-프로파일-분리-자격증명-전략.md).
+[README.md](README.md) "Roadmap" 절 참고(Refresh Token 보류 — ADR 0006, 인증 프로파일
+MVP/Production 분리 — ADR 0007 포함).

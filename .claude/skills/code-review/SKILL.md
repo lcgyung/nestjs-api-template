@@ -26,9 +26,10 @@ description: NestJS 코드 변경에 대한 백엔드 리뷰 기준. 컨트롤�
 - 환경변수는 ConfigService로 접근하는가(직접 process.env 금지).
 - DB 트랜잭션/리소스 정리 누락이 없는가.
 
-## 프로젝트 고유 규약 점검 (api-endpoint 규약 연동)
+## 프로젝트 고유 규약 점검 (정본: docs/api-conventions.md)
 
-`api-endpoint` 스킬 기준. tsc/lint 를 통과해도 어긋날 수 있는 의미적 규약:
+규약 정본은 `docs/api-conventions.md`. tsc/lint 를 통과해도 어긋날 수 있는 의미적 규약 요지
+(정본 변경 시 동기화):
 
 - **목록 응답** → `PaginatedResponseDto<T>`(`{ items, meta }`) 반환인가. bare 배열·`{ data }`·`{ results }` 금지.
 - **단건/생성/수정/me** → 엔티티 직접 반환인가(불필요한 수동 Response DTO 매핑 없음).

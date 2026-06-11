@@ -45,9 +45,10 @@ src/modules/<feature>/
 - **모듈** → `imports: [TypeOrmModule.forFeature([Entity])]`, service `providers`/`exports`.
   생성 후 `AppModule`(또는 상위 모듈) `imports` 에 새 모듈을 등록한다.
 
-## 엔드포인트 규약은 api-endpoint 스킬
+## 엔드포인트 규약 정본은 docs/api-conventions.md
 
-라우트/서비스 메서드의 **응답 형태·페이지네이션·예외 타입·직렬화**는 `api-endpoint` 스킬을 따른다.
+라우트/서비스 메서드의 **응답 형태·페이지네이션·예외 타입·직렬화**는 `docs/api-conventions.md`
+(정본, `api-endpoint` 스킬이 절차 래퍼)를 따른다.
 특히 목록 라우트는 `PaginationQueryDto` + `PaginatedResponseDto<T>`(`{ items, meta }`)로 만든다.
 
 ## 마무리
