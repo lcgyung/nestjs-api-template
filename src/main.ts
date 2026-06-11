@@ -39,6 +39,9 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, buildSwaggerConfig());
   SwaggerModule.setup('api-docs', app, document);
 
+  // SIGTERM/SIGINT 시 onApplicationShutdown 훅 실행 (TypeORM 커넥션 정리 등) — 컨테이너 환경 대응
+  app.enableShutdownHooks();
+
   const port = configService.get<number>('port') ?? 3000;
   await app.listen(port);
 }
