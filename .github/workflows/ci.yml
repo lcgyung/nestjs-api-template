@@ -23,6 +23,18 @@ jobs:
       - run: pnpm build
       - run: pnpm test:cov
 
+  security:
+    name: Security (gitleaks · pnpm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 히스토리 포함 시크릿 스캔 (리포가 작아 비용 미미)
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   e2e:
     name: E2E (MySQL)
     # DB 의존 단계(마이그레이션/시드/e2e)는 기본 스킵. 리포지토리 변수 RUN_E2E=true 일 때만 실행.
