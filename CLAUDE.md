@@ -162,8 +162,9 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   이 문서의 요지 뒤에 숨은 상세 규칙은 거기에 있다.
 - **스킬(`.claude/skills/`)** → `code-review`(백엔드 리뷰 기준), `api-endpoint`(정본
   `docs/api-conventions.md` 의 절차 래퍼), `scaffold-module`(신규 모듈 스캐폴딩 —
-  `src/modules/users/` 를 살아있는 템플릿으로 미러링), `tdd`(`/tdd` — RED→GREEN→REFACTOR).
-  작업 맥락에 맞춰 자동 로드된다.
+  `src/modules/users/` 를 살아있는 템플릿으로 미러링), `migration-workflow`(마이그레이션
+  생성→검토→적용 절차), `write-e2e`(testcontainers e2e 작성 절차), `tdd`(`/tdd` —
+  RED→GREEN→REFACTOR). 작업 맥락에 맞춰 자동 로드된다.
 - **서브에이전트(`.claude/agents/`)** → 역할별 모델 차등 고정(판단=opus, 실행=haiku — ADR 0010):
   `code-reviewer`(opus)·`security-reviewer`(opus, 읽기전용+memory)·`migration-reviewer`(opus)·
   `test-runner`(haiku, 실패만 요약)·`db-reader`(haiku, psql SELECT 전용 — guard-psql 이 강제).
