@@ -43,7 +43,7 @@ jobs:
         with:
           # 히스토리 포함 시크릿 스캔 (리포가 작아 비용 미미)
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: pnpm/action-setup@v4
