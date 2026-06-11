@@ -31,8 +31,9 @@ src/modules/<feature>/
 
 ## 각 파일이 따라야 할 패턴 (users/ 기준)
 
-- **컨트롤러** → `@ApiTags`/`@Controller('<feature>')`, 보호가 필요하면 `@UseGuards(JwtAuthGuard, RolesGuard)`
-  - `@Roles(...)`, 각 라우트에 `@ApiOperation`. 로직은 전부 서비스로 위임. `@Param('id', ParseIntPipe)`.
+- **컨트롤러** → `@ApiTags`/`@Controller('<feature>')`. 전역 가드가 이미 모든 라우트를 보호한다 —
+  **`@UseGuards` 재부착 금지**, `@Roles(...)`/`@Public()` 데코레이터만 사용.
+  - 각 라우트에 `@ApiOperation`. 로직은 전부 서비스로 위임. `@Param('id', ParseIntPipe)`.
   - **상태 코드 명시**: 생성 라우트에 `@HttpCode(HttpStatus.CREATED)`, 본문 없는 삭제에
     `@HttpCode(HttpStatus.NO_CONTENT)`(204).
 - **서비스** → `@InjectRepository(Entity) private readonly repo: Repository<Entity>` 직접 주입(커스텀
@@ -45,11 +46,10 @@ src/modules/<feature>/
 - **모듈** → `imports: [TypeOrmModule.forFeature([Entity])]`, service `providers`/`exports`.
   생성 후 `AppModule`(또는 상위 모듈) `imports` 에 새 모듈을 등록한다.
 
-## 엔드포인트 규약 정본은 docs/api-conventions.md
+## 엔드포인트 규약
 
-라우트/서비스 메서드의 **응답 형태·페이지네이션·예외 타입·직렬화**는 `docs/api-conventions.md`
-(정본, `api-endpoint` 스킬이 절차 래퍼)를 따른다.
-특히 목록 라우트는 `PaginationQueryDto` + `PaginatedResponseDto<T>`(`{ items, meta }`)로 만든다.
+라우트/서비스 메서드의 **응답 형태·페이지네이션·예외 타입·직렬화**는 정본
+`docs/api-conventions.md`(`api-endpoint` 스킬이 절차 래퍼)를 그대로 적용한다.
 
 ## 마무리
 

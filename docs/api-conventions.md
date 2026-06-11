@@ -1,8 +1,8 @@
 # API 규약 (정본)
 
 이 문서가 이 템플릿의 **API 응답·예외·DTO/직렬화 규약 정본**이다.
-`api-endpoint` 스킬·`code-review` 스킬·`review-gate.sh`(요지 인라인)·사람 리뷰어가 모두
-이 문서를 기준으로 삼는다 — 규약을 바꿀 땐 여기만 고치고 참조처 요지를 동기화한다.
+`api-endpoint` 스킬·`code-review` 스킬·사람 리뷰어가 모두 이 문서를 기준으로 삼고,
+`review-gate.sh` 는 이 문서 전문을 런타임 주입한다 — 규약을 바꿀 땐 **여기만 고치면 된다**(동기화 불요).
 기준 예시(정답 코드)는 `src/modules/users/`(컨트롤러·서비스·DTO)와 `src/common/dto/`다.
 
 ## 1. 응답 형태
