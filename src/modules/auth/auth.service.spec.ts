@@ -5,7 +5,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 
 import { Role } from '@/common/enums/role.enum';
-import { AuthService } from '@/modules/auth/auth.service';
+import { AuthService, maskEmail } from '@/modules/auth/auth.service';
 import { type User } from '@/modules/users/entities/user.entity';
 import { UsersService } from '@/modules/users/users.service';
 
@@ -109,6 +109,16 @@ describe('AuthService', () => {
       const opts = service.buildCookieOptions('bad.token');
 
       expect(opts.maxAge).toBeUndefined();
+    });
+  });
+
+  describe('maskEmail', () => {
+    it('로컬파트를 가리고 도메인은 유지한다', () => {
+      expect(maskEmail('admin@example.com')).toBe('a***@example.com');
+    });
+
+    it('@ 가 없는 값은 전체를 가린다', () => {
+      expect(maskEmail('not-an-email')).toBe('***');
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -16,8 +16,19 @@ export interface LoginResponse {
   accessToken: string;
 }
 
+/** 감사 로그에 평문 이메일/PII 를 남기지 않도록 로컬파트를 가린다(a***@example.com). */
+export function maskEmail(email: string): string {
+  const atIndex = email.indexOf('@');
+  if (atIndex <= 0) {
+    return '***';
+  }
+  return `${email[0]}***${email.slice(atIndex)}`;
+}
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -33,8 +44,16 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<LoginResponse> {
-    const user = await this.validateUser(dto.email, dto.password);
+    let user: User;
+    try {
+      user = await this.validateUser(dto.email, dto.password);
+    } catch (error) {
+      // 보안 감사 로그(실패) — requestId 는 winston format 이 자동 주입.
+      this.logger.warn(`로그인 실패: ${maskEmail(dto.email)}`);
+      throw error;
+    }
     const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role };
+    this.logger.log(`로그인 성공: ${maskEmail(user.email)} (id=${user.id})`);
     return { accessToken: await this.jwtService.signAsync(payload) };
   }
 
