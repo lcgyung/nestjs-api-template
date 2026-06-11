@@ -32,7 +32,7 @@ pnpm test users.service          # 파일명 패턴으로 일부만 실행
 pnpm exec jest src/modules/users/users.service.spec.ts    # 단일 파일
 pnpm exec jest -t "should hash password"                  # 테스트명(-t)으로 단일 케이스
 pnpm test:cov                    # 커버리지
-pnpm test:e2e                    # e2e (test/*.e2e-spec.ts, 실제 DB 필요)
+pnpm test:e2e                    # e2e (testcontainers 가 PG 자동 기동 — Docker 데몬만 필요)
 
 pnpm exec tsc --noEmit -p tsconfig.json   # 타입체크 단독 실행 (전용 스크립트 없음; Stop 게이트가 사용)
 
@@ -174,14 +174,13 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
   의도적 `!`(definite assignment) 관례와 충돌. 가치 있는 룰만 개별 채택했다.
 - **복잡도 캡(complexity/max-lines 등) 미도입** — 아직 없는 문제. 필요 시 추가.
 - **엔티티/DTO 필드의 `!`** — TypeORM/검증이 런타임에 채우는 값이라 의도적이다. non-null assertion 제거 금지.
-- **e2e testcontainers 미도입** — CI service container 가 런마다 깨끗한 DB 를 보장하고 e2e 스위트가
-  1개뿐. 상세는 ADR 0003.
 
 ## 테스트
 
 - **단위 테스트** → Jest(`*.spec.ts`). 서비스는 Repository를 모킹하여 비즈니스 로직을 검증합니다.
-- **e2e 테스트** → `test/*.e2e-spec.ts`. 실제 DB(또는 테스트 컨테이너)가 필요하므로 빠른
-  피드백 루프(저장 시 게이트)에는 포함하지 않습니다.
+- **e2e 테스트** → `test/*.e2e-spec.ts`. **testcontainers 가 전용 PG 를 자동 기동**(마이그레이션·시드
+  포함 — ADR 0009)하므로 compose DB 불필요, 단 Docker 데몬은 필요. 빠른 피드백 루프(Stop 게이트)에는
+  포함하지 않습니다.
 
 ## Claude Code 자동화 (`.claude/`)
 

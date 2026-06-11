@@ -144,7 +144,7 @@ pnpm build                 # 컴파일 (nest build + tsc-alias 경로 별칭 변
 pnpm lint                  # ESLint
 pnpm format                # Prettier --write
 pnpm test                  # 단위 테스트
-pnpm test:e2e              # e2e 테스트 (실제 DB 필요)
+pnpm test:e2e              # e2e 테스트 (testcontainers 가 PG 자동 기동 — Docker 데몬만 필요)
 pnpm migration:generate src/database/migrations/<Name>  # 마이그레이션 생성
 pnpm migration:run         # 마이그레이션 실행
 pnpm seed                  # 기본 admin 계정 시드
@@ -154,7 +154,9 @@ pnpm openapi:generate      # docs/openapi.json 생성 (DB 불필요 — 프론�
 > **DB 초기화 순서:** `docker compose up -d postgres` → `pnpm migration:run` → `pnpm seed`.
 > 경로 별칭 `@/*` → `src/*` 는 `tsconfig`·Jest·런타임(`tsc-alias`/`tsconfig-paths`) 모두에 설정됩니다.
 
-> **CI 의 DB 의존 e2e:** GitHub Actions 의 `e2e` 잡(마이그레이션·시드·e2e)은 기본 스킵이며,
+> **e2e 의 DB 격리:** e2e 는 testcontainers 가 전용 PostgreSQL 컨테이너를 띄우고
+> 마이그레이션·시드까지 자동 수행하므로(compose DB 불필요) Docker 데몬만 있으면 됩니다.
+> colima 사용 시 소켓을 자동 인식합니다. GitHub Actions 의 `e2e` 잡은 기본 스킵이며,
 > 리포지토리 변수 `RUN_E2E=true`(Settings → Secrets and variables → Actions → Variables) 일 때만
 > 실행됩니다. `lint·build·단위 테스트` 잡은 항상 실행됩니다.
 

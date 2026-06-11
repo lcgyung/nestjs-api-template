@@ -78,32 +78,15 @@ jobs:
           path: sbom.json
 
   e2e:
-    name: E2E (PostgreSQL)
-    # DB 의존 단계(마이그레이션/시드/e2e)는 기본 스킵. 리포지토리 변수 RUN_E2E=true 일 때만 실행.
+    name: E2E (testcontainers)
+    # DB 의존 단계는 기본 스킵. 리포지토리 변수 RUN_E2E=true 일 때만 실행.
     # 활성화: Settings → Secrets and variables → Actions → Variables → New repository variable
     #   Name: RUN_E2E  /  Value: true
+    # DB·마이그레이션·시드는 jest globalSetup 이 testcontainers 로 자체 처리한다 (ADR 0009).
     if: ${{ vars.RUN_E2E == 'true' }}
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: app
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d app"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
     env:
       NODE_ENV: test
-      DB_HOST: 127.0.0.1
-      DB_PORT: 5432
-      DB_NAME: app
-      DB_USERNAME: postgres
-      DB_PASSWORD: password
       JWT_SECRET: ci-test-secret-at-least-16-chars
       JWT_EXPIRES_IN: 1d
     steps:
@@ -114,6 +97,4 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm migration:run
-      - run: pnpm seed
       - run: pnpm test:e2e

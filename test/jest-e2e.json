@@ -4,6 +4,10 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "setupFiles": ["reflect-metadata"],
+  "globalSetup": "<rootDir>/global-setup.ts",
+  "globalTeardown": "<rootDir>/global-teardown.ts",
+  "testTimeout": 30000,
+  "maxWorkers": 1,
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },

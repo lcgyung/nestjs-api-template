@@ -1,6 +1,6 @@
 # 0003. e2e DB 격리에 testcontainers 비채택
 
-- 상태: 승인
+- 상태: 폐기 ([0009](0009-e2e-testcontainers-도입.md) 로 대체)
 - 날짜: 2026-06-11
 
 ## 맥락
