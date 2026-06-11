@@ -57,14 +57,14 @@ pnpm openapi:generate            # docs/openapi.json 생성 (DB 불필요 — Da
 
 ```text
 src
-├── common      # filters(예외), interceptors(로깅), decorators(@CurrentUser/@Roles), guards(JwtAuthGuard/RolesGuard),
+├── common      # filters(예외), interceptors(로깅), decorators(@CurrentUser/@Roles/@Public), guards(JwtAuthGuard/RolesGuard),
 │               # middleware(RequestId), context(AsyncLocalStorage requestId), pipes(VALIDATION_PIPE_OPTIONS), enums(Role)
 ├── config      # env.validation(class-validator 스키마 + validate), configuration(load 팩토리), swagger.config(main.ts·스크립트 공유)
 ├── database    # database.module, data-source(CLI/마이그레이션용 standalone), migrations, seeds(admin)
 ├── logger      # winston.config(+requestId 자동 주입) + LoggerModule (nest-winston)
 ├── modules     # auth(JWT/passport-jwt), users(role 기반 RBAC), health(terminus — /health·liveness·readiness)
-├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 가드/필터/인터셉터 + RequestIdMiddleware(Express 5 라우트 문법 '{*splat}')
-└── main.ts     # 부트스트랩 (전역 ValidationPipe/필터, helmet, CORS, Swagger /api-docs, winston, enableShutdownHooks)
+├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 가드(Throttler→JwtAuth→Roles, deny-by-default)/필터/인터셉터 + RequestIdMiddleware(Express 5 라우트 문법 '{*splat}')
+└── main.ts     # 부트스트랩 (NestExpress: 전역 ValidationPipe/필터, helmet(HSTS), cookie-parser, CORS, body limit, trust proxy, Swagger(prod 비활성), winston, enableShutdownHooks)
 scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.json exclude; dist/main.js 경로 보존)
 ```
 
@@ -96,13 +96,16 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
   ```
 
 - **인증** → JWT 기반. 비밀번호는 bcrypt로 해싱하고 평문/해시를 응답에 노출하지 않습니다.
-  보호된 라우트는 가드로, 인증 사용자 주입은 커스텀 데코레이터로 처리합니다. 응답에서 민감 필드 제거는
-  전역 `ClassSerializerInterceptor`(`app.module.ts` 에 `APP_INTERCEPTOR` 로 등록) + 엔티티의
-  `@Exclude()`(예: `User.password`) 조합으로 강제된다. **새 엔티티에 비밀/토큰 등 민감 필드를 추가하면
-  반드시 `@Exclude()` 를 붙인다.**
+  토큰은 **httpOnly 쿠키(`access_token`)로 발급**하고 `jwt.strategy` 가 쿠키 우선·Bearer 헤더 폴백으로
+  추출한다(모바일·서버 간 호출 유지 — [ADR 0005](docs/adr/0005-jwt-쿠키-전환-csrf-전략.md)). 인증은
+  **deny-by-default** — `JwtAuthGuard`·`RolesGuard` 가 `app.module.ts` 에 전역 `APP_GUARD` 로 등록되어
+  모든 라우트를 보호한다. 인증 없이 열 라우트만 `@Public()` 을 명시하고(로그인·로그아웃·health), 역할
+  제한은 `@Roles(Role.Admin)` 으로 건다 — **컨트롤러에 `@UseGuards(JwtAuthGuard)` 를 다시 붙이지 말 것.**
+  응답 민감 필드 제거는 전역 `ClassSerializerInterceptor` + 엔티티의 `@Exclude()`(예: `User.password`)
+  조합으로 강제된다. **새 엔티티에 비밀/토큰 등 민감 필드를 추가하면 반드시 `@Exclude()` 를 붙인다.**
 
   ```typescript
-  @UseGuards(JwtAuthGuard)
+  // 전역 가드가 보호하므로 @UseGuards 불필요. 인증된 사용자는 @CurrentUser 로 주입.
   @Get('me')
   getMe(@CurrentUser() user: User) {
     return user;
@@ -119,10 +122,14 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 - **로깅** → Winston. 요청 로깅은 인터셉터로, 애플리케이션 로그는 Nest `Logger` 대체 구현으로.
   **request id** 는 `RequestIdMiddleware`(AsyncLocalStorage)가 시작하고 winston format 이 모든
   로그에 자동 주입한다 — 로거 호출부에서 id 를 수동으로 넘기지 말 것.
-- **보안** → `main.ts`에서 helmet · CORS · rate limiting(ThrottlerModule)을 적용합니다.
-  시크릿 스캔은 gitleaks(pre-commit 은 설치 시에만, CI `security` 잡은 항상) + 의존성 취약점은
-  `pnpm audit --prod`(CI) — 수정 불가 CVE 는 `pnpm-workspace.yaml` `auditConfig.ignoreCves` 에
-  사유와 함께 기록.
+- **보안** → `main.ts`에서 helmet(HSTS) · CORS · rate limiting(ThrottlerModule) · payload 100kb 제한 ·
+  `trust proxy` 를 적용합니다. CORS_ORIGIN 은 **production 에서 필수**(미설정 시 부팅 차단), Swagger
+  `/api-docs` 는 prod 에서 비활성. 시크릿 스캔은 gitleaks + **SAST 는 Semgrep**(CI `sast` 잡, private
+  Free repo 라 CodeQL 대신) + 의존성 취약점은 `pnpm audit --prod`(CI) + `eslint-plugin-security` +
+  SBOM(CycloneDX). 수정 불가 CVE 는 `pnpm-workspace.yaml` `auditConfig.ignoreCves` 에 사유와 함께 기록.
+  로그인은 전용 `@Throttle`(분당 5)로 brute-force 를 완화하고, 성공/실패는 이메일 마스킹 감사 로그를 남긴다.
+  시큐어 코딩 체크리스트는 [`docs/secure-harness-nestjs.md`](docs/secure-harness-nestjs.md), 위협 모델은
+  [`docs/threat-model.md`](docs/threat-model.md).
 - **마이그레이션(비자명 규칙)** → 운영에서 `synchronize: true`를 **사용하지 않습니다**. 앱과
   분리된 `DataSource`를 두고 마이그레이션으로만 스키마를 변경합니다. `migration:generate`는
   컴파일된 `DataSource`를 기준으로 동작하므로, 엔티티 변경 후 생성 → 검토 → `migration:run`
@@ -196,4 +203,5 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 
 ## 로드맵
 
-- Refresh Token · RBAC · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹)
+- Refresh Token(회전·서버측 폐기 — [ADR 0006](docs/adr/0006-refresh-토큰-회전-보류.md) 로 보류 중) ·
+  Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹)

@@ -77,6 +77,18 @@ findAll(@Query() query: PaginationQueryDto): Promise<PaginatedResponseDto<User>>
 - **bcrypt 비밀번호 필드**는 `@MinLength(8)` 와 함께 `@MaxLength(72)`(bcrypt 72바이트 한계)를 **항상**
   건다. 생성·로그인 등 비밀번호를 받는 모든 DTO 에 일관 적용(한쪽만 거는 드리프트 금지).
 
+## 6. 인가 / 소유권 (IDOR/BOLA 방지)
+
+- 인증은 **deny-by-default** 다 — 전역 `JwtAuthGuard` 가 모든 라우트를 보호한다. 인증 없이 열어야
+  하는 라우트만 `@Public()` 을 명시한다(로그인·health 등). 역할 제한은 `@Roles(Role.Admin)`.
+- **본인 리소스만 접근하는 엔드포인트(예: `/orders/:id` 를 일반 사용자가 조회)는 서비스 계층에서
+  "이 리소스가 이 유저의 것인가"를 반드시 확인한다.** `@CurrentUser()` 의 id 와 리소스 소유자 id 를
+  비교하고, 불일치면 `ForbiddenException`(또는 존재를 숨겨야 하면 `NotFoundException`)을 던진다.
+  소유권 검사 없이 `findOne(id)` 결과를 그대로 반환하지 않는다(IDOR).
+- admin 전용이면 라우트에 `@Roles(Role.Admin)` 만으로 충분하다(현재 `users` 가 이 경우 —
+  소유권 표면 없음). 도메인이 본인 리소스를 다루기 시작하면 위 소유권 검증을 추가한다.
+- 권한 시나리오는 e2e 로 검증한다(타 유저/롤 접근 시 403 — `test/app.e2e-spec.ts` 참고).
+
 ## 마무리
 
 - 검증: `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build`. 목록은 `GET /...?page=1&limit=10`으로 `{ items, meta }` 확인.
