@@ -31,7 +31,9 @@ CI(`.github/workflows/ci.yml`)는 `main`·`dev` 대상 push/PR 에서 lint·type
 - 예: `feat(users): 사용자 목록 조회 페이지네이션 도입`, `fix(ci): Node 22 정렬`.
 
 이 규약은 **`commitlint` + `.husky/commit-msg` 훅이 강제**합니다(`type` 누락·잘못된 type 은 커밋이
-거부됨). 한국어·영문 혼용 subject 는 허용합니다(`subject-case` 비활성). PR 제목도 동일한 컨벤션을 따릅니다.
+거부됨; 설정은 `package.json` 의 `commitlint` 필드). 한국어·영문 혼용 subject 를 쓰는 프로젝트라
+영문 소문자 시작 강제(`subject-case`)는 비활성 — type/scope·header 길이 등 핵심 규약은 그대로
+유지합니다. PR 제목도 동일한 컨벤션을 따릅니다.
 
 ## 버전 규칙
 
