@@ -112,7 +112,26 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "\\.module\\.ts$",
+      "main\\.ts$",
+      "src/database/",
+      "src/logger/winston\\.config\\.ts$",
+      "src/config/configuration\\.ts$",
+      "current-user\\.decorator\\.ts$",
+      "\\.dto\\.ts$",
+      "\\.entity\\.ts$"
+    ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 85,
+        "functions": 75,
+        "lines": 85,
+        "statements": 85
+      }
+    },
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1"
