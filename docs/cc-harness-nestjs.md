@@ -22,12 +22,15 @@
 2. **컨텍스트 예산 관리** — CLAUDE.md는 200줄 이내, 나머지는 rules/docs로 분리(progressive disclosure). 컨텍스트가 깨끗할수록 출력이 일관됨.
 3. **모델 고정** — 모든 subagent에 `model` 명시(역할별 차등 — ADR 0010). 모델이 바뀌면 산출물이 달라짐.
 4. **장황한 출력 격리** — 테스트/마이그레이션 로그는 subagent(test-runner 등)에서 처리해 메인 컨텍스트 오염 방지.
+5. **한 규칙 최대 2곳** — 규칙 본문은 (1) 정본(docs)과 (2) 경로 트리거 rules 카드에만 둔다.
+   CLAUDE.md·skills·agents 는 포인터만, hooks 는 정본을 **런타임 주입**한다(요지 인라인 복제 금지 —
+   수동 동기화 드리프트의 근원).
 
 ---
 
 ## 1. CLAUDE.md (항상 로드 — 컨텍스트 예산의 핵심)
 
-- [x] 🟢 200줄 이내 유지 — **트림 완료(212→175줄)**: 인증/DTO 상세→rules, 머신 강제 규칙→CONTRIBUTING.md, 검증 이원화→docs/architecture.md, 로드맵→README
+- [x] 🟢 200줄 이내 유지 — **트림 완료(212→167줄)**: 인증/DTO/마이그레이션 상세→rules, 머신 강제 규칙→CONTRIBUTING.md, 검증 이원화→docs/architecture.md, 로드맵→README
 - [x] 🟢 빌드/실행/테스트 명령 명시 — `pnpm start:dev` `pnpm test` `pnpm test:e2e` `pnpm lint` `pnpm typecheck`
 - [x] 🟢 모듈/레이어 구조 1문단 (controller→service→repository, 상세는 docs/architecture.md)
 - [x] 🟢 **불변 규칙만** 기재 — DTO+ValidationPipe, raw SQL 금지, 적용 마이그레이션 불변, 시크릿 ConfigModule 경유, 완료 전 lint/typecheck/test(Stop 게이트가 hook 으로도 강제)
@@ -53,6 +56,7 @@
 - [x] 🟢 `skills/write-e2e/` — e2e 작성 절차(testcontainers 전제·보일러플레이트·필수 시나리오)
 - [x] 🟢 `skills/api-endpoint/` — 정본 `docs/api-conventions.md` 의 절차 래퍼(이중 정본 방지)
 - [x] 🟢 description 구체화 — 트리거 문구("마이그레이션 만들어", "e2e 테스트 작성" 등) 포함
+- [x] 🟢 스킬 본문 포인터화 — 규약 요지를 스킬에 중복하지 않고 정본 절 번호로 참조(원칙 5)
 
 ## 4. subagents/ (독립 컨텍스트 — 오염 방지 + 전문화)
 
@@ -73,7 +77,7 @@
 - [x] 🟢 `PreToolUse` (Bash) → `guard-bash.sh`: DROP/TRUNCATE 등 파괴적 DB 명령 차단 (exit 2 대신 deny JSON)
 - [x] 🟢 `PreToolUse` (Bash) → `rm -rf`/force push/reset --hard 차단 + `guard-psql.sh`(읽기전용, 21케이스 테스트)
 - [x] 🟢 `Stop` 게이트 → `tsc --noEmit` + `eslint` + `prettier --check` + 유닛 `jest` 미통과 시 차단(exit 2),
-      통과 시 `review-gate.sh` 의미 리뷰(haiku, CC_AUTO_REVIEW=1 상시)
+      통과 시 `review-gate.sh` 의미 리뷰(haiku, **규약 정본 전문 런타임 주입** — 동기화 0, CC_AUTO_REVIEW=1 상시)
 - [ ] (선택) `SubagentStop` — 현재 정리할 자원 없음(db-reader 는 구문당 단발 접속). 필요 시 추가
 
 > 점검 포인트: "테스트 통과 후 완료"를 CLAUDE.md 문장으로만 두면 ~70%만 지켜짐. **hook으로 박으면 100%** → 매회 동일 품질.
@@ -81,7 +85,7 @@
 ## 6. docs/ (참조 문서 — on-demand)
 
 - [x] 🟢 `docs/architecture.md` — 모듈 의존 다이어그램·요청 수명주기·검증 이원화·경로 별칭
-- [x] 🟢 `docs/api-conventions.md` — 응답 포맷·에러 포맷·페이지네이션 **정본**(스킬·review-gate 가 참조)
+- [x] 🟢 `docs/api-conventions.md` — 응답 포맷·에러 포맷·페이지네이션 **정본**(스킬이 참조, review-gate 가 전문을 런타임 주입)
 - [x] 🟢 `docs/adr/` — 주요 결정 기록(0001~0010)
 - [x] 🟢 CLAUDE.md/rules에서 참조만 (본문 인라인 금지 = 컨텍스트 절약)
 
@@ -98,7 +102,7 @@
 
 | 구성요소     | 존재 | 최적화                | 결정성 기여   | 비고                                   |
 | ------------ | ---- | --------------------- | ------------- | -------------------------------------- |
-| CLAUDE.md    | ✅   | ✅ (175줄)            | 컨텍스트 예산 | 상세는 rules/docs 로 위임              |
+| CLAUDE.md    | ✅   | ✅ (167줄)            | 컨텍스트 예산 | 상세는 rules/docs 로 위임              |
 | rules/       | ✅   | ✅ (paths 글롭)       | 부분 로드     | 5종                                    |
 | skills/      | ✅   | ✅ (구체 description) | 절차 고정     | 6종 (api-endpoint 는 정본 래퍼)        |
 | subagents/   | ✅   | ✅ (model 차등 고정)  | 컨텍스트 격리 | 5종, ADR 0010                          |
@@ -115,14 +119,14 @@
 ├── agents/                  # code-reviewer, security-reviewer, migration-reviewer, test-runner, db-reader
 ├── hooks/                   # session-context, guard-bash, guard-psql(+test), format-changed-file, gate, review-gate
 └── settings.json            # hooks 체인 + permissions.deny + CC_AUTO_REVIEW
-CLAUDE.md                    # 175줄, 불변 규칙 + 참조 포인터 (루트 — Claude Code 표준 위치)
+CLAUDE.md                    # 167줄, 불변 규칙 + 참조 포인터 (루트 — Claude Code 표준 위치)
 docs/                        # architecture, api-conventions(정본), adr/(0001~0010), 위협모델·보안 체크리스트
 ```
 
 ## 완료 정의
 
 - [x] 깨지면 안 되는 규칙(포맷·typecheck·테스트·DB 안전)이 전부 **hook으로 강제**됨
-- [x] CLAUDE.md 200줄 이내(175줄), 상세는 rules/docs로 분리
+- [x] CLAUDE.md 200줄 이내(167줄), 상세는 rules/docs로 분리
 - [x] 모든 subagent `model` 고정 — 역할별 차등(판단=opus, 실행=haiku, ADR 0010)
 - [ ] 동일 작업 3회 반복 시 산출물 구조·품질 동일 (회귀 확인 — **후속 과제**:
       `scaffold-module` 로 더미 모듈을 3회 생성해 구조 diff 비교 후 폐기)
