@@ -1,10 +1,16 @@
-import { ClassSerializerInterceptor, Module } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  type MiddlewareConsumer,
+  Module,
+  type NestModule,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from '@/common/interceptors/logging.interceptor';
+import { RequestIdMiddleware } from '@/common/middleware/request-id.middleware';
 import configuration from '@/config/configuration';
 import { validate } from '@/config/env.validation';
 import { DatabaseModule } from '@/database/database.module';
@@ -46,4 +52,9 @@ import { UsersModule } from '@/modules/users/users.module';
     { provide: APP_INTERCEPTOR, useClass: ClassSerializerInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Express 5(Nest 11)에서는 '*' 대신 '{*splat}' 가 전체 라우트 매칭 문법이다
+    consumer.apply(RequestIdMiddleware).forRoutes('{*splat}');
+  }
+}
