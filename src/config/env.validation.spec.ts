@@ -34,4 +34,20 @@ describe('env validate()', () => {
   it('PORT 범위를 벗어나면 throw 한다', () => {
     expect(() => validate({ ...baseEnv, PORT: '70000' })).toThrow(/PORT/);
   });
+
+  it('production 에서 CORS_ORIGIN 이 비면 throw 한다', () => {
+    expect(() => validate({ ...baseEnv, NODE_ENV: 'production', CORS_ORIGIN: '' })).toThrow(
+      /CORS_ORIGIN/,
+    );
+  });
+
+  it('production 이라도 CORS_ORIGIN 이 있으면 통과한다', () => {
+    const config = validate({
+      ...baseEnv,
+      NODE_ENV: 'production',
+      CORS_ORIGIN: 'https://app.example.com',
+    });
+    expect(config.NODE_ENV).toBe(NodeEnv.Production);
+    expect(config.CORS_ORIGIN).toBe('https://app.example.com');
+  });
 });
