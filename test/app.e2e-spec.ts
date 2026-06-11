@@ -29,6 +29,14 @@ describe('Auth & Users (e2e)', () => {
     return request(app.getHttpServer()).get('/health').expect(200);
   });
 
+  it('/health/liveness (GET) → 200 (무의존)', () => {
+    return request(app.getHttpServer()).get('/health/liveness').expect(200);
+  });
+
+  it('/health/readiness (GET) → 200 (DB ping)', () => {
+    return request(app.getHttpServer()).get('/health/readiness').expect(200);
+  });
+
   it('로그인 → accessToken → /users/me 흐름', async () => {
     const login = await request(app.getHttpServer())
       .post('/auth/login')
