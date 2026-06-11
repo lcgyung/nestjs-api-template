@@ -193,7 +193,8 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 - **Stop** → `gate.sh`: 세션 종료 전 정적 검사 `tsc --noEmit` + `eslint` + `prettier --check`(누적, 셋 다
   `pnpm exec`) 후 **유닛 `jest`**(`*.spec.ts`만; e2e 는 별도 config 라 제외) 게이트. 모두 통과하면
   `review-gate.sh` 가 변경된 `src/*.ts` 를 헤드리스 `claude -p --model haiku` 로 의미적 규약 리뷰한다.
-  **리뷰는 기본 비활성 — `CC_AUTO_REVIEW=1` 일 때만 동작**(`.claude/settings.json` 의 `env` 또는 셸 export).
+  **리뷰는 `.claude/settings.json` 의 `env` 에서 `CC_AUTO_REVIEW=1` 로 상시 활성화**되어 있다(끄려면 값
+  제거/`0`, 셸 export 로도 토글 가능).
   규약 위반 blocker 시 `exit 2` 로 계속 수정 유도. 순수 bash 타임아웃(바이너리 불요)·연속 라운드 상한
   2회·`claude` 미설치/타임아웃 시 비차단(graceful degrade).
 - **스킬(`.claude/skills/`)** → `code-review`(백엔드 리뷰 기준), `api-endpoint`(엔드포인트 응답·예외·DTO 규약),

@@ -1,4 +1,5 @@
 {
+  "env": { "CC_AUTO_REVIEW": "1" },
   "hooks": {
     "SessionStart": [
       {
