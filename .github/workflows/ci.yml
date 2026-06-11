@@ -46,6 +46,37 @@ jobs:
       # 런타임 의존성만 게이트 — dev 취약점은 Dependabot PR 로 처리
       - run: pnpm audit --prod --audit-level=high
 
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    # private Free repo 라 CodeQL 불가 → Semgrep 레지스트리 룰셋(토큰 불필요)으로 게이트.
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep scan --config p/typescript --config p/nodejs --config p/owasp-top-ten --error --metrics=off
+
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    # 소프트웨어 자재명세서 생성 — 게이트 아님(아티팩트만, 실패해도 머지 비차단)
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dlx @cyclonedx/cdxgen@latest -t pnpm -o sbom.json
+        env:
+          FETCH_LICENSE: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
   e2e:
     name: E2E (MySQL)
     # DB 의존 단계(마이그레이션/시드/e2e)는 기본 스킵. 리포지토리 변수 RUN_E2E=true 일 때만 실행.
