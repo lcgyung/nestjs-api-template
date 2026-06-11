@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, dev]
 
+# 토큰 기본 권한 최소화 — 명시하지 않은 스코프는 none. 잡별로 필요한 만큼만 확대한다.
+permissions:
+  contents: read
+
 jobs:
   lint-build-test:
     name: Lint · Build · Unit Test
@@ -29,6 +33,11 @@ jobs:
   security:
     name: Security (gitleaks · pnpm audit)
     runs-on: ubuntu-latest
+    # gitleaks-action 은 pull_request 이벤트에서 PR 커밋 목록(/pulls/:n/commits)을 조회하므로
+    # pull-requests:read 가 없으면 403(Resource not accessible by integration)으로 실패한다.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
