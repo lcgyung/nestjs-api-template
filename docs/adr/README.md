@@ -23,3 +23,4 @@
 | [0007](0007-인증-프로파일-분리-자격증명-전략.md)   | 인증 프로파일(MVP/Production) 분리 + 단계적 자격증명 전략 | 승인 |
 | [0008](0008-mysql-postgresql-전환.md)              | MySQL → PostgreSQL 전환                                   | 승인 |
 | [0009](0009-e2e-testcontainers-도입.md)            | e2e DB 격리에 testcontainers 도입                         | 승인 |
+| [0010](0010-claude-code-하네스-v2-결정.md)         | Claude Code 하네스 v2 결정 묶음                           | 승인 |
