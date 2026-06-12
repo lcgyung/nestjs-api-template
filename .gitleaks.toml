@@ -1,0 +1,18 @@
+# gitleaks 시크릿 스캔 설정 — 기본 룰셋 확장 + 의도적 더미 시크릿 allowlist.
+# 로컬: .husky/pre-commit (gitleaks 설치 시) / CI: .github/workflows/ci.yml security 잡.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "커밋이 의도된 비밀 아닌 값들 — 개발/CI 전용 더미 시크릿"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.development$''',
+]
+regexes = [
+  # .env.development 의 개발 전용 시크릿 (운영 교체 전제, 주석으로 명시됨)
+  '''dev-only-insecure-secret-change-me-please''',
+  # ci.yml e2e 잡의 테스트 전용 시크릿
+  '''ci-test-secret-at-least-16-chars''',
+]

@@ -2,6 +2,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import security from 'eslint-plugin-security';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 
@@ -12,6 +13,8 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   eslintPluginPrettierRecommended,
+  // 보안 SAST 린트(eslint-plugin-security) — detect-non-literal-fs-filename·detect-child-process 등.
+  security.configs.recommended,
   {
     languageOptions: {
       globals: {
@@ -73,6 +76,8 @@ export default tseslint.config(
       '@typescript-eslint/prefer-nullish-coalescing': 'error',
       '@typescript-eslint/prefer-optional-chain': 'error',
       eqeqeq: ['error', 'always'],
+      // obj[변수] 접근마다 발생하는 과도한 오탐 → 비활성(관용). 나머지 security 룰은 유지.
+      'security/detect-object-injection': 'off',
     },
   },
   {

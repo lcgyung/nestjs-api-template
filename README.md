@@ -12,15 +12,17 @@ NestJS · TypeScript · TypeORM · MySQL · JWT · Swagger · class-validator ·
 
 ## Features
 
-- JWT 인증 (bcrypt 해싱)
+- JWT 인증 (bcrypt 해싱) — httpOnly 쿠키 발급 + Bearer 헤더 폴백
+- RBAC + deny-by-default 전역 인증 가드 (`@Public()` 명시 예외)
 - TypeORM + 마이그레이션
-- Swagger 자동 문서화
-- DTO 검증 + 환경 변수 검증
+- Swagger 자동 문서화 + OpenAPI 스펙 export (`docs/openapi.json`, CI 드리프트 게이트; prod 비활성)
+- DTO 검증 (`whitelist` + `forbidNonWhitelisted`) + 환경 변수 검증 (CORS prod fail-fast)
 - Global Exception Filter (표준 에러 응답)
-- helmet · CORS · rate limiting
-- Winston 로깅
-- Health Check (Terminus)
-- ESLint + Prettier + Husky
+- helmet(HSTS) · CORS · rate limiting (로그인 강화) · payload 크기 제한
+- Winston 로깅 + request id 전파 (`x-request-id`) + 로그인 감사 로그
+- Health Check (Terminus) — `/health` · `/health/liveness` · `/health/readiness`
+- graceful shutdown (`enableShutdownHooks`)
+- ESLint + Prettier + Husky + gitleaks·Semgrep(SAST) + pnpm audit + SBOM + Dependabot
 
 ## Quick Start
 
@@ -70,36 +72,68 @@ THROTTLE_LIMIT=100      # 윈도당 최대 요청 수
 | ----------------- | ----- | --------- |
 | admin@example.com | admin | 전체 권한 |
 
-로그인 → 토큰 발급 → 인증이 필요한 엔드포인트 호출:
+로그인 → 토큰 발급(httpOnly 쿠키 + 바디) → 인증이 필요한 엔드포인트 호출:
 
 ```bash
-# 1) 로그인 → accessToken 발급
-curl -X POST http://localhost:3000/auth/login \
+# 1) 로그인 → access_token 쿠키 발급(+ 폴백용 바디). 쿠키는 -c 로 저장
+curl -c jar -X POST http://localhost:3000/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@example.com","password":"password"}'
 
-# 2) 발급받은 토큰으로 보호된 엔드포인트 호출
+# 2a) 쿠키로 보호된 엔드포인트 호출(브라우저 기본 경로)
+curl -b jar http://localhost:3000/users/me
+
+# 2b) 또는 바디의 accessToken 으로 Bearer 폴백(모바일·서버 간 호출)
 curl http://localhost:3000/users/me \
   -H 'Authorization: Bearer <accessToken>'
+
+# 3) 로그아웃 → 쿠키 만료
+curl -b jar -X POST http://localhost:3000/auth/logout
 ```
 
 ## API / Swagger
 
-엔드포인트 탐색·시도는 Swagger UI(`/api-docs`)에서. 보호된 라우트는 우상단 **Authorize**에
+엔드포인트 탐색·시도는 Swagger UI(`/api-docs`, **production 에선 비활성**)에서. 보호된 라우트는
+브라우저면 로그인 쿠키가 자동 전송되고, 도구 호출이면 우상단 **Authorize**에
 `Bearer <accessToken>`을 넣어 호출합니다. 요청 바디는 DTO + class-validator로 검증되며,
 검증 실패·예외는 아래 **표준 에러 응답** 형식으로 통일됩니다.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Client((Client)) --> MW["helmet · CORS · RequestId 미들웨어"]
+  MW --> TG[ThrottlerGuard]
+  TG --> VP["ValidationPipe<br/>(whitelist + forbidNonWhitelisted)"]
+  VP --> C["Controllers<br/>auth · users · health"]
+  C --> S[Services]
+  S --> R[TypeORM Repository]
+  R --> DB[(MySQL)]
+
+  subgraph CROSS["횡단 관심사 (전역 등록)"]
+    F[AllExceptionsFilter]
+    I["LoggingInterceptor ·<br/>ClassSerializerInterceptor"]
+    W["Winston (prod JSON)<br/>+ requestId 전파"]
+  end
+
+  C -.-> F
+  C -.-> I
+  I -.-> W
+
+  C -. "메타데이터 스캔" .-> SW["Swagger /api-docs<br/>docs/openapi.json"]
+```
 
 ## Structure
 
 ```text
 src
-├── common      # filters, interceptors, decorators, guards, enums(Role)
-├── config      # env 검증(env.validation) 및 설정 로드(configuration)
+├── common      # filters, interceptors, decorators, guards, middleware(RequestId), context, pipes, enums(Role)
+├── config      # env 검증(env.validation), 설정 로드(configuration), swagger 설정(swagger.config)
 ├── database    # database.module, data-source(CLI), migrations, seeds
-├── logger      # winston 설정 + LoggerModule
-├── modules     # auth(JWT), users(role/RBAC), health(terminus)
-├── app.module.ts
-└── main.ts     # 부트스트랩 (전역 파이프/필터, helmet, CORS, Swagger, winston)
+├── logger      # winston 설정(+requestId) + LoggerModule
+├── modules     # auth(JWT), users(role/RBAC), health(terminus — liveness/readiness)
+├── app.module.ts  # + RequestIdMiddleware 등록
+└── main.ts     # 부트스트랩 (전역 파이프/필터, helmet, CORS, Swagger, winston, shutdown hooks)
 ```
 
 ## Scripts
@@ -114,6 +148,7 @@ pnpm test:e2e              # e2e 테스트 (실제 DB 필요)
 pnpm migration:generate src/database/migrations/<Name>  # 마이그레이션 생성
 pnpm migration:run         # 마이그레이션 실행
 pnpm seed                  # 기본 admin 계정 시드
+pnpm openapi:generate      # docs/openapi.json 생성 (DB 불필요 — 프론트 타입 생성 소스)
 ```
 
 > **DB 초기화 순서:** `docker compose up -d mysql` → `pnpm migration:run` → `pnpm seed`.
@@ -153,7 +188,7 @@ pnpm seed                  # 기본 admin 계정 시드
 
 ## Roadmap
 
-Refresh Token · RBAC 확장 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry
+Refresh Token · RBAC 확장 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹)
 
 ## Contributing & Conventions
 

@@ -39,7 +39,12 @@ pnpm exec tsc --noEmit -p tsconfig.json   # 타입체크 단독 실행 (전용 �
 pnpm migration:generate src/database/migrations/<Name>   # 엔티티 변경 후 생성
 pnpm migration:run               # 마이그레이션 적용  /  migration:revert 로 롤백
 pnpm seed                        # 기본 admin 계정 시드 (admin@example.com / password)
+
+pnpm openapi:generate            # docs/openapi.json 생성 (DB 불필요 — DataSource 스텁, ADR 0004)
 ```
+
+> **컨트롤러/DTO/라우트를 변경하면 `pnpm openapi:generate` 로 `docs/openapi.json` 을 재생성해
+> 함께 커밋한다.** CI 가 `git diff --exit-code` 로 스펙 드리프트를 차단한다.
 
 > **DB 초기화 순서:** `docker compose up -d mysql` → `pnpm migration:run` → `pnpm seed`.
 > 전체 스크립트·환경 변수·표준 에러 응답 형식은 [`README.md`](README.md) 참고.
@@ -52,13 +57,15 @@ pnpm seed                        # 기본 admin 계정 시드 (admin@example.com
 
 ```text
 src
-├── common      # filters(예외), interceptors(로깅), decorators(@CurrentUser/@Roles), guards(JwtAuthGuard/RolesGuard), enums(Role)
-├── config      # env.validation(class-validator 스키마 + validate), configuration(load 팩토리)
+├── common      # filters(예외), interceptors(로깅), decorators(@CurrentUser/@Roles/@Public), guards(JwtAuthGuard/RolesGuard),
+│               # middleware(RequestId), context(AsyncLocalStorage requestId), pipes(VALIDATION_PIPE_OPTIONS), enums(Role)
+├── config      # env.validation(class-validator 스키마 + validate), configuration(load 팩토리), swagger.config(main.ts·스크립트 공유)
 ├── database    # database.module, data-source(CLI/마이그레이션용 standalone), migrations, seeds(admin)
-├── logger      # winston.config + LoggerModule (nest-winston)
-├── modules     # auth(JWT/passport-jwt), users(role 기반 RBAC), health(terminus)
-├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 APP_GUARD(Throttler)/APP_FILTER(AllExceptions)/APP_INTERCEPTOR(Logging+ClassSerializer)
-└── main.ts     # 부트스트랩 (전역 ValidationPipe/필터, helmet, CORS, Swagger /api-docs, winston)
+├── logger      # winston.config(+requestId 자동 주입) + LoggerModule (nest-winston)
+├── modules     # auth(JWT/passport-jwt), users(role 기반 RBAC), health(terminus — /health·liveness·readiness)
+├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 가드(Throttler→JwtAuth→Roles, deny-by-default)/필터/인터셉터 + RequestIdMiddleware(Express 5 라우트 문법 '{*splat}')
+└── main.ts     # 부트스트랩 (NestExpress: 전역 ValidationPipe/필터, helmet(HSTS), cookie-parser, CORS, body limit, trust proxy, Swagger(prod 비활성), winston, enableShutdownHooks)
+scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.json exclude; dist/main.js 경로 보존)
 ```
 
 비자명한 규칙(검증 경로가 둘로 나뉜다): 환경 변수 검증(`config/env.validation.ts`)은 부팅 시
@@ -72,8 +79,10 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 
 - **레이어링** → Controller(얇게: 라우팅·DTO 바인딩) → Service(비즈니스 로직) →
   Repository(TypeORM). 컨트롤러에 비즈니스 로직을 두지 말고 서비스로 위임합니다.
-- **입력 검증** → 모든 입력은 DTO + class-validator로 검증. 전역 `ValidationPipe`에
-  `whitelist: true`(정의되지 않은 속성 제거), `transform: true`(타입 변환)를 켭니다.
+- **입력 검증** → 모든 입력은 DTO + class-validator로 검증. 전역 `ValidationPipe` 옵션의 정본은
+  `src/common/pipes/validation-pipe.options.ts`(`VALIDATION_PIPE_OPTIONS`) — main.ts 와 e2e 가
+  공유하므로 한쪽만 고치지 말 것. `whitelist` + `forbidNonWhitelisted`(DTO 에 없는 필드는 silent
+  strip 이 아니라 400) + `transform`.
 
   ```typescript
   export class CreateUserDto {
@@ -87,13 +96,16 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
   ```
 
 - **인증** → JWT 기반. 비밀번호는 bcrypt로 해싱하고 평문/해시를 응답에 노출하지 않습니다.
-  보호된 라우트는 가드로, 인증 사용자 주입은 커스텀 데코레이터로 처리합니다. 응답에서 민감 필드 제거는
-  전역 `ClassSerializerInterceptor`(`app.module.ts` 에 `APP_INTERCEPTOR` 로 등록) + 엔티티의
-  `@Exclude()`(예: `User.password`) 조합으로 강제된다. **새 엔티티에 비밀/토큰 등 민감 필드를 추가하면
-  반드시 `@Exclude()` 를 붙인다.**
+  토큰은 **httpOnly 쿠키(`access_token`)로 발급**하고 `jwt.strategy` 가 쿠키 우선·Bearer 헤더 폴백으로
+  추출한다(모바일·서버 간 호출 유지 — [ADR 0005](docs/adr/0005-jwt-쿠키-전환-csrf-전략.md)). 인증은
+  **deny-by-default** — `JwtAuthGuard`·`RolesGuard` 가 `app.module.ts` 에 전역 `APP_GUARD` 로 등록되어
+  모든 라우트를 보호한다. 인증 없이 열 라우트만 `@Public()` 을 명시하고(로그인·로그아웃·health), 역할
+  제한은 `@Roles(Role.Admin)` 으로 건다 — **컨트롤러에 `@UseGuards(JwtAuthGuard)` 를 다시 붙이지 말 것.**
+  응답 민감 필드 제거는 전역 `ClassSerializerInterceptor` + 엔티티의 `@Exclude()`(예: `User.password`)
+  조합으로 강제된다. **새 엔티티에 비밀/토큰 등 민감 필드를 추가하면 반드시 `@Exclude()` 를 붙인다.**
 
   ```typescript
-  @UseGuards(JwtAuthGuard)
+  // 전역 가드가 보호하므로 @UseGuards 불필요. 인증된 사용자는 @CurrentUser 로 주입.
   @Get('me')
   getMe(@CurrentUser() user: User) {
     return user;
@@ -108,7 +120,16 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 - **설정/검증** → 환경 변수는 부팅 시 스키마로 검증하여 잘못된 설정이면 즉시 중단(fail-fast)합니다.
   특히 `JWT_SECRET`이 비었거나 너무 짧으면 실행을 막습니다(변수 목록은 README 참고).
 - **로깅** → Winston. 요청 로깅은 인터셉터로, 애플리케이션 로그는 Nest `Logger` 대체 구현으로.
-- **보안** → `main.ts`에서 helmet · CORS · rate limiting(ThrottlerModule)을 적용합니다.
+  **request id** 는 `RequestIdMiddleware`(AsyncLocalStorage)가 시작하고 winston format 이 모든
+  로그에 자동 주입한다 — 로거 호출부에서 id 를 수동으로 넘기지 말 것.
+- **보안** → `main.ts`에서 helmet(HSTS) · CORS · rate limiting(ThrottlerModule) · payload 100kb 제한 ·
+  `trust proxy` 를 적용합니다. CORS_ORIGIN 은 **production 에서 필수**(미설정 시 부팅 차단), Swagger
+  `/api-docs` 는 prod 에서 비활성. 시크릿 스캔은 gitleaks + **SAST 는 Semgrep**(CI `sast` 잡, private
+  Free repo 라 CodeQL 대신) + 의존성 취약점은 `pnpm audit --prod`(CI) + `eslint-plugin-security` +
+  SBOM(CycloneDX). 수정 불가 CVE 는 `pnpm-workspace.yaml` `auditConfig.ignoreCves` 에 사유와 함께 기록.
+  로그인은 전용 `@Throttle`(분당 5)로 brute-force 를 완화하고, 성공/실패는 이메일 마스킹 감사 로그를 남긴다.
+  시큐어 코딩 체크리스트는 [`docs/secure-harness-nestjs.md`](docs/secure-harness-nestjs.md), 위협 모델은
+  [`docs/threat-model.md`](docs/threat-model.md).
 - **마이그레이션(비자명 규칙)** → 운영에서 `synchronize: true`를 **사용하지 않습니다**. 앱과
   분리된 `DataSource`를 두고 마이그레이션으로만 스키마를 변경합니다. `migration:generate`는
   컴파일된 `DataSource`를 기준으로 동작하므로, 엔티티 변경 후 생성 → 검토 → `migration:run`
@@ -144,7 +165,8 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 
 ### 의도적으로 채택하지 않은 것 (고치지 말 것)
 
-다음은 누락이 아니라 **의도적 선택**이다. "강화"하려다 오히려 기존 패턴을 깨지 않도록 주의:
+다음은 누락이 아니라 **의도적 선택**이다. "강화"하려다 오히려 기존 패턴을 깨지 않도록 주의.
+근거 상세·재검토 트리거는 [`docs/adr/`](docs/adr/README.md) (특히 ADR 0002·0003) 참고:
 
 - **`noUncheckedIndexedAccess` 미사용** — 코드가 이미 `??`/`?.`로 방어적이고 churn 대비 이득이 작다
   (테스트·배열 코드에 부담). 데이터 중심 로직이 늘면 재검토.
@@ -152,6 +174,8 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
   의도적 `!`(definite assignment) 관례와 충돌. 가치 있는 룰만 개별 채택했다.
 - **복잡도 캡(complexity/max-lines 등) 미도입** — 아직 없는 문제. 필요 시 추가.
 - **엔티티/DTO 필드의 `!`** — TypeORM/검증이 런타임에 채우는 값이라 의도적이다. non-null assertion 제거 금지.
+- **e2e testcontainers 미도입** — CI service container 가 런마다 깨끗한 DB 를 보장하고 e2e 스위트가
+  1개뿐. 상세는 ADR 0003.
 
 ## 테스트
 
@@ -179,4 +203,9 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 
 ## 로드맵
 
-- Refresh Token · RBAC · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · GitHub Actions
+- Refresh Token(회전·서버측 폐기 — [ADR 0006](docs/adr/0006-refresh-토큰-회전-보류.md) 로 보류 중) ·
+  SSO/소셜 로그인 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹)
+- **인증 프로파일(MVP/Production)** — 인증을 _자격증명 전략(ID/PW·외부 본인인증·SSO) + 공통 세션 골격_
+  으로 보고, MVP 프로파일에선 외부 본인인증 전략만 켜고 일부 보안 자동화(SAST·SBOM·위협모델 풀버전 등)를
+  보류한다. ID/PW 로그인은 삭제하지 않고 비활성 보존한다. 근거·범위는
+  [ADR 0007](docs/adr/0007-인증-프로파일-분리-자격증명-전략.md).

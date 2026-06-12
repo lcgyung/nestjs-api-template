@@ -1,1 +1,8 @@
 pnpm exec lint-staged
+
+# 시크릿 스캔 — gitleaks 미설치 시 건너뜀 (CI security 잡이 최종 게이트)
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner
+else
+  echo "[pre-commit] gitleaks 미설치 — 시크릿 스캔 건너뜀 (brew install gitleaks). CI 에서 강제됩니다."
+fi
