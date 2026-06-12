@@ -7,6 +7,10 @@ set -uo pipefail
 [ -n "${CC_GATE_SKIP:-}" ] && exit 0
 
 INPUT=$(cat 2>/dev/null || true) # Stop hook stdin(JSON) 캡처 → review-gate 로 전달
+MODE=$(printf '%s' "$INPUT" | jq -r '.permission_mode // "default"' 2>/dev/null || echo default)
+# 보상 통제(약): plan 모드는 src 변경이 없으니 정적검사·테스트·리뷰를 스킵(효율).
+# 사전 미커밋 변경이 있어도 다음 비-plan Stop 에서 검사됨.
+[ "$MODE" = "plan" ] && exit 0
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ERR=""
 

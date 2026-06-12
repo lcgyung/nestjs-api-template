@@ -9,6 +9,8 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
+  # jest 30 의 의존성 unrs-resolver(napi 리졸버)는 JS 폴백으로 동작 — 네이티브 빌드 불요
+  unrs-resolver: false
 
 # bcrypt > @mapbox/node-pre-gyp 가 tar ^6 을 끌고 오는데, 6.x 라인엔 high CVE 패치가 없다
 # (GHSA-34x7-hfp2-rc4v 외 5건, 패치는 7.5.11+). node-pre-gyp 의 tar 사용부(extract)는 7.x 와 호환.

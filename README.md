@@ -55,7 +55,7 @@ DB_PASSWORD=password
 JWT_SECRET=             # openssl rand -base64 32 (16자 이상 필수)
 JWT_EXPIRES_IN=1d
 
-CORS_ORIGIN=            # 콤마 구분, 비우면 전체 허용
+CORS_ORIGIN=            # 콤마 구분. 비우면 비프로덕션은 전체 허용, production 은 부팅 차단(필수)
 THROTTLE_TTL=60000      # rate limit 윈도(ms)
 THROTTLE_LIMIT=100      # 윈도당 최대 요청 수
 ```

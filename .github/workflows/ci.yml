@@ -6,14 +6,18 @@ on:
   pull_request:
     branches: [main, dev]
 
+# 토큰 기본 권한 최소화 — 명시하지 않은 스코프는 none. 잡별로 필요한 만큼만 확대한다.
+permissions:
+  contents: read
+
 jobs:
   lint-build-test:
     name: Lint · Build · Unit Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -29,16 +33,21 @@ jobs:
   security:
     name: Security (gitleaks · pnpm audit)
     runs-on: ubuntu-latest
+    # gitleaks-action 은 pull_request 이벤트에서 PR 커밋 목록(/pulls/:n/commits)을 조회하므로
+    # pull-requests:read 가 없으면 403(Resource not accessible by integration)으로 실패한다.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # 히스토리 포함 시크릿 스캔 (리포가 작아 비용 미미)
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -53,7 +62,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: semgrep scan --config p/typescript --config p/nodejs --config p/owasp-top-ten --error --metrics=off
 
   sbom:
@@ -62,9 +71,9 @@ jobs:
     # 소프트웨어 자재명세서 생성 — 게이트 아님(아티팩트만, 실패해도 머지 비차단)
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -72,7 +81,7 @@ jobs:
       - run: pnpm dlx @cyclonedx/cdxgen@latest -t pnpm -o sbom.json
         env:
           FETCH_LICENSE: 'false'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.json
@@ -90,9 +99,9 @@ jobs:
       JWT_SECRET: ci-test-secret-at-least-16-chars
       JWT_EXPIRES_IN: 1d
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm

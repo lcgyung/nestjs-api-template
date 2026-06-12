@@ -7,13 +7,17 @@
 # - 규약 정본 docs/api-conventions.md 전문을 런타임 주입한다(동기화 지점 없음).
 set -uo pipefail
 
-[ -z "${CC_AUTO_REVIEW:-}" ] && exit 0 # 기본 off — 옵트인일 때만 동작
-[ -n "${CC_GATE_SKIP:-}" ] && exit 0    # 중첩 리뷰(claude -p)가 게이트를 재트리거하는 재귀 방지
+[ -n "${CC_GATE_SKIP:-}" ] && exit 0 # 중첩 리뷰(claude -p)가 게이트를 재트리거하는 재귀 방지(최우선)
 
-cat >/dev/null 2>&1 || true # stdin(JSON) 소비(현재 미사용)
+INPUT=$(cat 2>/dev/null || true) # Stop stdin(JSON) — 모드 분기에 사용
+MODE=$(printf '%s' "$INPUT" | jq -r '.permission_mode // "default"' 2>/dev/null || echo default)
+
+# 보상 통제(강): default/plan 외(사람 확인 없는 편집 모드)는 CC_AUTO_REVIEW 옵트인과 무관하게 리뷰 강제.
+case "$MODE" in default | plan) FORCE="" ;; *) FORCE=1 ;; esac
+[ -z "$FORCE" ] && [ -z "${CC_AUTO_REVIEW:-}" ] && exit 0 # default 모드는 기존 옵트인 유지
 
 ROUND_FILE=".git/cc_review_round"
-MAX_ROUNDS=2
+MAX_ROUNDS=$([ -n "$FORCE" ] && echo 3 || echo 2) # 강한 통제(auto)는 라운드 상한 +1
 REVIEW_TIMEOUT=150
 REVIEW_MODEL=haiku
 
