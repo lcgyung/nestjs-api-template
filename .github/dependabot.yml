@@ -1,4 +1,7 @@
-# 월간 의존성 업데이트 — minor/patch 와 github-actions 는 묶고 npm major 만 개별 PR.
+# 월간 의존성 업데이트.
+# - cooldown: 갓 릴리즈된 버전은 회귀/핫픽스가 잦으므로 유휴 기간 후에만 PR(미성숙 릴리즈 회피).
+# - groups: 함께 올라가야 깨지지 않는 패밀리(@nestjs/*, eslint, jest 등)는 major 포함 단일 PR.
+#   결합되지 않은 단일 패키지의 major 만 개별 PR.
 # 커밋 메시지는 Conventional Commits(chore(deps): ...) 정합.
 version: 2
 updates:
@@ -7,7 +10,43 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+      semver-patch-days: 3
+      semver-minor-days: 7
+      semver-major-days: 30
     groups:
+      # --- 호환성 결합 패밀리: 함께 올라가야 하므로 major 포함 단일 PR ---
+      nestjs:
+        patterns:
+          - '@nestjs/*'
+      eslint:
+        patterns:
+          - 'eslint'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - 'eslint-config-*'
+          - 'eslint-plugin-*'
+          - 'globals'
+      jest:
+        patterns:
+          - 'jest'
+          - 'ts-jest'
+          - '@types/jest'
+      typescript:
+        patterns:
+          - 'typescript'
+          - 'ts-node'
+          - 'ts-loader'
+          - 'tsc-alias'
+          - 'tsconfig-paths'
+      commitlint:
+        patterns:
+          - '@commitlint/*'
+      types:
+        patterns:
+          - '@types/*'
+      # --- 나머지: minor/patch 만 묶음. 결합 외 단일 패키지 major 는 개별 PR ---
       minor-and-patch:
         update-types:
           - minor
@@ -20,6 +59,8 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:
