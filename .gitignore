@@ -1,0 +1,29 @@
+# dependencies
+/node_modules
+
+# build output
+/dist
+/build
+
+# test / coverage
+/coverage
+*.lcov
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# env files (예시/개발용은 추적, 실제/운영 비밀은 제외)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# OS / editor
+.DS_Store
+.idea
+*.swp
+
+# misc
+*.tsbuildinfo
