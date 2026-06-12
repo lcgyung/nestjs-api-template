@@ -1,7 +1,10 @@
 # 월간 의존성 업데이트.
 # - cooldown: 갓 릴리즈된 버전은 회귀/핫픽스가 잦으므로 유휴 기간 후에만 PR(미성숙 릴리즈 회피).
+#   patch/minor 를 같은 창(7일)으로 정렬해 그룹 멤버가 함께 성숙 → cooldown 시차로 인한 PR 분열 방지.
 # - groups: 함께 올라가야 깨지지 않는 패밀리(@nestjs/*, eslint, jest 등)는 major 포함 단일 PR.
+#   그 외 잔여는 dependency-type(development/production) 2그룹으로 통합해 배치당 PR 수 축소.
 #   결합되지 않은 단일 패키지의 major 만 개별 PR.
+# - ignore: @types/* patch 는 저가치 노이즈라 억제(타입 minor/major 는 계속 수신).
 # 커밋 메시지는 Conventional Commits(chore(deps): ...) 정합.
 version: 2
 updates:
@@ -12,9 +15,13 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
-      semver-patch-days: 3
+      semver-patch-days: 7 # minor 와 정렬 → 그룹 멤버가 같은 창에서 성숙
       semver-minor-days: 7
       semver-major-days: 30
+    ignore:
+      # 타입 정의 patch 는 거의 항상 안전·저가치 → 억제(minor/major 는 수신).
+      - dependency-name: '@types/*'
+        update-types: ['version-update:semver-patch']
     groups:
       # --- 호환성 결합 패밀리: 함께 올라가야 하므로 major 포함 단일 PR ---
       nestjs:
@@ -43,11 +50,16 @@ updates:
       commitlint:
         patterns:
           - '@commitlint/*'
-      types:
-        patterns:
-          - '@types/*'
-      # --- 나머지: minor/patch 만 묶음. 결합 외 단일 패키지 major 는 개별 PR ---
-      minor-and-patch:
+      # --- 잔여를 dependency-type 2그룹으로 통합 (구 types/minor-and-patch 대체) ---
+      # family 그룹보다 아래에 둬야 @types/jest→jest 등 패밀리 우선 매칭이 보장된다.
+      # @types/* 등 나머지 dev deps 는 development 로 흡수. major 는 묶지 않아 개별 PR 로 검토.
+      development:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      production:
+        dependency-type: production
         update-types:
           - minor
           - patch
