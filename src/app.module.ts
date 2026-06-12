@@ -2,6 +2,7 @@ import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from '@/common/interceptors/logging.interceptor';
 import configuration from '@/config/configuration';

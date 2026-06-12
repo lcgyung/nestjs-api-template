@@ -32,11 +32,14 @@ description: NestJS 코드 변경에 대한 백엔드 리뷰 기준. 컨트롤�
 
 - **목록 응답** → `PaginatedResponseDto<T>`(`{ items, meta }`) 반환인가. bare 배열·`{ data }`·`{ results }` 금지.
 - **단건/생성/수정/me** → 엔티티 직접 반환인가(불필요한 수동 Response DTO 매핑 없음).
+- **상태 코드** → 생성 라우트에 `@HttpCode(HttpStatus.CREATED)`, 본문 없는 삭제에 `NO_CONTENT`(204) 명시인가.
 - **예외 타입** → 상황별 빌트인 매핑(404/409/401/403/422 …)과 일치하고 메시지가 한국어·내부 비노출인가.
-- **민감 필드** → 비밀번호 등 민감 컬럼에 `@Exclude()` 가 있는가.
+- **민감 필드** → 비밀번호 등 민감 컬럼에 `@Exclude()` 가 있는가. bcrypt 비밀번호 DTO 는 `@MinLength`+`@MaxLength(72)` 둘 다인가.
 - **신규 모듈** → controller/service/module/spec/dto/entity 표준 파일 셋을 갖췄는가(`scaffold-module` 기준).
 - **쿼리** → 정렬/필터가 화이트리스트인가. 관계가 명시적인가(`eager: true` 금지).
 - **입력** → DTO + class-validator 이고 수정 DTO 는 `PartialType` 인가.
+- **네이밍 품질** → 네이밍 _형식_(camel/Pascal/UPPER)은 `naming-convention` 룰이 강제하므로, 리뷰는
+  *의미*에 집중한다(이름이 역할을 정확히 드러내는가, 약어·오해 소지 없는가).
 
 ## 리뷰 출력 형식
 

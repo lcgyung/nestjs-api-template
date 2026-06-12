@@ -122,6 +122,37 @@ implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명�
 - **ESLint + Prettier** — 모든 코드는 린트/포매팅 규칙을 통과해야 합니다 (`pnpm lint`, `pnpm format`).
 - **Husky + Lint-Staged** — 커밋 시 변경 파일에 자동으로 `eslint --fix` + `prettier`가 적용됩니다.
 
+### 머신이 강제하는 일관성 규칙
+
+아래는 *관례가 아니라 린터/타입체커가 강제*한다 — 어기면 `pnpm lint`/`typecheck`(따라서 Stop
+게이트·CI·커밋 훅)가 실패한다. 새 코드를 이 스타일에 맞추면 통과한다.
+
+- **네이밍**(`@typescript-eslint/naming-convention`) — 파일은 kebab-case(`*.service.ts` 등),
+  클래스/타입/인터페이스는 PascalCase(+역할 suffix: `…Controller`/`…Service`/`…Dto`), **enum 멤버는
+  PascalCase**(`Role.User`), `private static readonly` 상수는 UPPER_CASE(`SALT_ROUNDS`), 변수/멤버는
+  camelCase. 예외로 데코레이터 팩토리·`DataSource` const 는 PascalCase, env 미러링 클래스
+  (`EnvironmentVariables`)의 프로퍼티는 UPPER_CASE 가 허용된다.
+- **import 정렬**(`simple-import-sort`) — external → `@/` 별칭 → 상대경로 순, 그룹 간 빈 줄. **auto-fix**
+  되므로 저장/커밋 시 자동 정렬된다.
+- **타입 전용 import 는 `import type`**(`consistent-type-imports`, auto-fix). 단 `emitDecoratorMetadata`
+  로 DI/데코레이터 메타데이터에 쓰이는 타입(`Repository<T>` 등)은 값 import 로 남는다(룰이 자동 판별).
+- **기타** — 타입 정의는 `interface`, 배열은 `T[]`, `??`/`?.` 선호, `===` 만, 미사용 지역변수/파라미터
+  금지(`noUnusedLocals`/`noUnusedParameters`; 의도적 미사용은 `_` prefix), 떠도는 Promise 금지
+  (`no-floating-promises` error).
+- **커밋 메시지** — Conventional Commits(`commitlint` + `.husky/commit-msg`). `<type>(<scope>): <subject>`.
+  한국어·영문 혼용 subject 허용(`subject-case` 비활성), type/scope·헤더 길이는 강제. 상세는 `CONTRIBUTING.md`.
+
+### 의도적으로 채택하지 않은 것 (고치지 말 것)
+
+다음은 누락이 아니라 **의도적 선택**이다. "강화"하려다 오히려 기존 패턴을 깨지 않도록 주의:
+
+- **`noUncheckedIndexedAccess` 미사용** — 코드가 이미 `??`/`?.`로 방어적이고 churn 대비 이득이 작다
+  (테스트·배열 코드에 부담). 데이터 중심 로직이 늘면 재검토.
+- **typescript-eslint `strictTypeChecked` 프리셋 미채택** — `no-non-null-assertion` 이 엔티티 필드의
+  의도적 `!`(definite assignment) 관례와 충돌. 가치 있는 룰만 개별 채택했다.
+- **복잡도 캡(complexity/max-lines 등) 미도입** — 아직 없는 문제. 필요 시 추가.
+- **엔티티/DTO 필드의 `!`** — TypeORM/검증이 런타임에 채우는 값이라 의도적이다. non-null assertion 제거 금지.
+
 ## 테스트
 
 - **단위 테스트** → Jest(`*.spec.ts`). 서비스는 Repository를 모킹하여 비즈니스 로직을 검증합니다.

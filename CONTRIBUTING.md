@@ -14,7 +14,7 @@
 feat|fix|chore/* ──PR──▶ dev ──PR──▶ main(release)
 ```
 
-CI(`.github/workflows/ci.yml`)는 `main`·`dev` 대상 push/PR 에서 lint·build·단위 테스트를
+CI(`.github/workflows/ci.yml`)는 `main`·`dev` 대상 push/PR 에서 lint·typecheck·build·단위 테스트를
 실행합니다(DB 의존 e2e 는 리포지토리 변수 `RUN_E2E=true` 일 때만).
 
 ## 커밋 컨벤션
@@ -30,7 +30,8 @@ CI(`.github/workflows/ci.yml`)는 `main`·`dev` 대상 push/PR 에서 lint·buil
 - **scope**(선택): 변경 영역 (`users`, `auth`, `ci`, `claude` 등).
 - 예: `feat(users): 사용자 목록 조회 페이지네이션 도입`, `fix(ci): Node 22 정렬`.
 
-PR 제목도 동일한 컨벤션을 따릅니다.
+이 규약은 **`commitlint` + `.husky/commit-msg` 훅이 강제**합니다(`type` 누락·잘못된 type 은 커밋이
+거부됨). 한국어·영문 혼용 subject 는 허용합니다(`subject-case` 비활성). PR 제목도 동일한 컨벤션을 따릅니다.
 
 ## 버전 규칙
 
@@ -59,13 +60,18 @@ git push origin vX.Y.Z
 ```bash
 pnpm install --frozen-lockfile   # 재현 설치 (CI 와 동일)
 pnpm lint                        # ESLint  (pnpm lint:fix 로 자동 수정)
+pnpm typecheck                   # tsc --noEmit (타입체크 단독)
 pnpm build                       # nest build + tsc-alias
 pnpm test                        # 단위 테스트 (*.spec.ts)
 ```
 
-- 커밋 시 Husky + lint-staged 가 변경 파일에 `eslint --fix` + `prettier` 를 적용합니다.
-- Claude Code 세션의 **Stop 게이트**(`.claude/`)가 `tsc --noEmit` + `eslint` +
+세 계층이 일관성을 강제합니다:
+
+- **커밋 훅**(Husky + lint-staged) — 변경 파일에 `eslint --fix` + `prettier`, 그리고
+  `commit-msg` 훅이 `commitlint` 로 커밋 메시지 규약을 검사합니다.
+- **Stop 게이트**(`.claude/`) — Claude Code 세션 종료 전 `tsc --noEmit` + `eslint` +
   `prettier --check` + 유닛 `jest` 를 누적 검사합니다. PR 전 위 4개를 통과시키세요.
+- **CI** — `lint·typecheck·build·test` 를 동일하게 재검사합니다.
 - e2e(`*.e2e-spec.ts`)는 실제 DB 가 필요하므로 빠른 피드백 루프에서는 제외합니다
   (`pnpm test:e2e`, 사전에 `migration:run` + `seed`).
 
