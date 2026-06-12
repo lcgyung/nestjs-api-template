@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependabot 안정화** — 릴리즈 직후 미성숙 버전을 거르는 cooldown(유휴 기간: patch 3·minor 7·
+  major 30일) 도입, 상호 의존 패밀리(@nestjs·eslint·jest·typescript·commitlint·@types)를
+  호환성 단위로 그룹화(major 포함). 결합되지 않은 단일 패키지의 major 만 개별 PR 유지.
+
 ## [0.2.2] - 2026-06-11
 
 Claude Code 하네스의 모드별 보상 통제 정교화(auto push 의도 게이트)와 의존성·CI 정비를 담은 패치 릴리스.
