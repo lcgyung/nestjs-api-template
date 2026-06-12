@@ -8,15 +8,41 @@
 집중합니다.
 
 > **상태: 핵심 스캐폴딩 완료.** `package.json`·`src/`·`test/`·`docker-compose.yml`·CI 가 구성되어
-> 있고, `npm run build`/`lint`/`test` 가 통과합니다. 아래 규칙은 설계이자 현재 코드의 기준입니다.
-> 코드를 변경하면 이 문서도 실제 상태에 맞게 갱신하세요. 미구현 항목은 하단 "로드맵" 참고
-> (특히 TDD/품질 게이트 자동화는 아직 미구현 — [`docs/quality-gate.md`](docs/quality-gate.md) 청사진).
+> 있고, `pnpm build`/`lint`/`test` 가 통과합니다. 아래 규칙은 설계이자 현재 코드의 기준입니다.
+> 코드를 변경하면 이 문서도 실제 상태에 맞게 갱신하세요.
+> (Claude Code 훅 자동화는 구현됨 — 상세는 아래 `## Claude Code 자동화` 절 참고.)
 
 ## 패키지 매니저
 
-이 프로젝트는 **npm**을 사용합니다(`package-lock.json` 추적). Node `>=20` 기준이며, CI/재현
-설치에서는 `npm ci`(lockfile 고정)를 사용하세요. 명령어는 스캐폴딩 후 `package.json`의
-`scripts`를 기준으로 합니다(주요 스크립트 목록은 README 참고).
+이 프로젝트는 **pnpm**을 사용합니다(`pnpm-lock.yaml` 추적, `package.json`의 `packageManager`
+필드로 버전 고정). Node `>=22.13` 기준이며(pnpm 11.5.2 가 요구), CI/재현 설치에서는 `pnpm install --frozen-lockfile`을
+사용하세요. bcrypt 같은 **네이티브 빌드 스크립트 허용은 `pnpm-workspace.yaml`의 `allowBuilds`**로
+관리합니다(pnpm 10+ 부터 `package.json`의 `pnpm` 필드는 더 이상 읽지 않음).
+
+## 자주 쓰는 명령어
+
+```bash
+pnpm start:dev                   # 개발 서버 (watch)
+pnpm build                       # nest build + tsc-alias (dist 경로 별칭 치환)
+pnpm lint                        # ESLint  /  pnpm lint:fix 로 자동 수정
+pnpm format                      # Prettier --write
+
+pnpm test                        # 단위 테스트 전체 (Jest, *.spec.ts)
+pnpm test users.service          # 파일명 패턴으로 일부만 실행
+pnpm exec jest src/modules/users/users.service.spec.ts    # 단일 파일
+pnpm exec jest -t "should hash password"                  # 테스트명(-t)으로 단일 케이스
+pnpm test:cov                    # 커버리지
+pnpm test:e2e                    # e2e (test/*.e2e-spec.ts, 실제 DB 필요)
+
+pnpm exec tsc --noEmit -p tsconfig.json   # 타입체크 단독 실행 (전용 스크립트 없음; Stop 게이트가 사용)
+
+pnpm migration:generate src/database/migrations/<Name>   # 엔티티 변경 후 생성
+pnpm migration:run               # 마이그레이션 적용  /  migration:revert 로 롤백
+pnpm seed                        # 기본 admin 계정 시드 (admin@example.com / password)
+```
+
+> **DB 초기화 순서:** `docker compose up -d mysql` → `pnpm migration:run` → `pnpm seed`.
+> 전체 스크립트·환경 변수·표준 에러 응답 형식은 [`README.md`](README.md) 참고.
 
 ## 프로젝트 구조
 
@@ -31,13 +57,16 @@ src
 ├── database    # database.module, data-source(CLI/마이그레이션용 standalone), migrations, seeds(admin)
 ├── logger      # winston.config + LoggerModule (nest-winston)
 ├── modules     # auth(JWT/passport-jwt), users(role 기반 RBAC), health(terminus)
-├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 APP_FILTER/APP_INTERCEPTOR/APP_GUARD
+├── app.module.ts  # ConfigModule(validate) + Throttler + 전역 APP_GUARD(Throttler)/APP_FILTER(AllExceptions)/APP_INTERCEPTOR(Logging+ClassSerializer)
 └── main.ts     # 부트스트랩 (전역 ValidationPipe/필터, helmet, CORS, Swagger /api-docs, winston)
 ```
 
-비자명한 규칙: 환경 변수의 숫자 필드는 `@Type(() => Number)` 로 명시 변환한다
-(`enableImplicitConversion` 은 reflect 메타데이터 의존성 때문에 빌드/테스트 환경에 따라 불안정).
-Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터를 로드한다.
+비자명한 규칙(검증 경로가 둘로 나뉜다): 환경 변수 검증(`config/env.validation.ts`)은 부팅 시
+`plainToInstance` + `validateSync` 로 **전역 `ValidationPipe` 와 무관하게** 직접 수행한다. 이 경로엔
+implicit 변환이 없으므로 숫자 필드는 `@Type(() => Number)` 로 명시 변환한다(reflect 메타데이터 의존
+제거 → 빌드/테스트 환경 무관). 반면 **요청 DTO** 용 전역 `ValidationPipe`(`main.ts`)는
+`transformOptions.enableImplicitConversion: true` 를 켠다 — 둘을 혼동해 한쪽 설정을 다른 쪽에 맞추지
+말 것. Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터를 로드한다.
 
 ## 아키텍처 / 규칙
 
@@ -58,7 +87,10 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
   ```
 
 - **인증** → JWT 기반. 비밀번호는 bcrypt로 해싱하고 평문/해시를 응답에 노출하지 않습니다.
-  보호된 라우트는 가드로, 인증 사용자 주입은 커스텀 데코레이터로 처리합니다.
+  보호된 라우트는 가드로, 인증 사용자 주입은 커스텀 데코레이터로 처리합니다. 응답에서 민감 필드 제거는
+  전역 `ClassSerializerInterceptor`(`app.module.ts` 에 `APP_INTERCEPTOR` 로 등록) + 엔티티의
+  `@Exclude()`(예: `User.password`) 조합으로 강제된다. **새 엔티티에 비밀/토큰 등 민감 필드를 추가하면
+  반드시 `@Exclude()` 를 붙인다.**
 
   ```typescript
   @UseGuards(JwtAuthGuard)
@@ -70,6 +102,9 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
 
 - **에러 응답** → Global Exception Filter가 모든 예외를 표준 형식으로 통일합니다
   (형식은 README "Standard Error Response" 참고 — 이 문서에서 중복 정의하지 않음).
+- **응답·세부 규약** → 성공 응답 형태(단건=엔티티 직접 반환, 목록=`{ items, meta }` 페이지네이션),
+  예외 타입 매핑, 쿼리/관계, DTO 직렬화 등 세부 규약은
+  `api-endpoint` 스킬을 따릅니다(엔드포인트 작업 시 자동 로드됨 — 규약 정본이며 본문은 이 문서에 중복하지 않음).
 - **설정/검증** → 환경 변수는 부팅 시 스키마로 검증하여 잘못된 설정이면 즉시 중단(fail-fast)합니다.
   특히 `JWT_SECRET`이 비었거나 너무 짧으면 실행을 막습니다(변수 목록은 README 참고).
 - **로깅** → Winston. 요청 로깅은 인터셉터로, 애플리케이션 로그는 Nest `Logger` 대체 구현으로.
@@ -84,7 +119,7 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
 - **타입 안정성 우선** — TypeScript 타입을 명확히 지정하고 `any` 사용을 지양합니다.
   `tsconfig`의 `strict`를 켭니다.
 - **최소 보일러플레이트** — 불필요한 추상화를 피하고 NestJS 관용 구조(모듈/프로바이더)를 따릅니다.
-- **ESLint + Prettier** — 모든 코드는 린트/포매팅 규칙을 통과해야 합니다 (`npm run lint`, `npm run format`).
+- **ESLint + Prettier** — 모든 코드는 린트/포매팅 규칙을 통과해야 합니다 (`pnpm lint`, `pnpm format`).
 - **Husky + Lint-Staged** — 커밋 시 변경 파일에 자동으로 `eslint --fix` + `prettier`가 적용됩니다.
 
 ## 테스트
@@ -92,11 +127,25 @@ Jest 는 `setupFiles: ['reflect-metadata']` 로 데코레이터 메타데이터�
 - **단위 테스트** → Jest(`*.spec.ts`). 서비스는 Repository를 모킹하여 비즈니스 로직을 검증합니다.
 - **e2e 테스트** → `test/*.e2e-spec.ts`. 실제 DB(또는 테스트 컨테이너)가 필요하므로 빠른
   피드백 루프(저장 시 게이트)에는 포함하지 않습니다.
-- TDD/품질 게이트 자동화 설계는 [`docs/quality-gate.md`](docs/quality-gate.md) 참고.
+
+## Claude Code 자동화 (`.claude/`)
+
+`.claude/settings.json` 이 훅을 등록한다. 코드를 만질 때 아래 동작을 전제로 한다.
+
+- **SessionStart** → `session-context.sh`: 브랜치 등 컨텍스트를 주입.
+- **PreToolUse(Bash)** → `guard-bash.sh`: 파괴적 명령(`rm -rf /`, force push, `reset --hard` 등)을 차단.
+- **PostToolUse(Edit/Write)** → `format-changed-file.sh`: 변경된 `*.ts` 에 `eslint --fix` + `prettier` 자동 적용.
+- **Stop** → `gate.sh`: 세션 종료 전 정적 검사 `tsc --noEmit` + `eslint` + `prettier --check`(누적, 셋 다
+  `pnpm exec`) 후 **유닛 `jest`**(`*.spec.ts`만; e2e 는 별도 config 라 제외) 게이트. 모두 통과하면
+  `review-gate.sh` 가 변경된 `src/*.ts` 를 헤드리스 `claude -p --model haiku` 로 의미적 규약 리뷰한다.
+  **리뷰는 기본 비활성 — `CC_AUTO_REVIEW=1` 일 때만 동작**(`.claude/settings.json` 의 `env` 또는 셸 export).
+  규약 위반 blocker 시 `exit 2` 로 계속 수정 유도. 순수 bash 타임아웃(바이너리 불요)·연속 라운드 상한
+  2회·`claude` 미설치/타임아웃 시 비차단(graceful degrade).
+- **스킬(`.claude/skills/`)** → `code-review`(백엔드 리뷰 기준), `api-endpoint`(엔드포인트 응답·예외·DTO 규약),
+  `scaffold-module`(신규 모듈 스캐폴딩 — `src/modules/users/` 를 살아있는 템플릿으로 미러링),
+  `tdd`(`/tdd` — RED→GREEN→REFACTOR 사이클 안내). 작업 맥락에 맞춰 자동 로드된다.
+- `.claude/agents/code-reviewer.md` 서브에이전트도 함께 제공된다(`code-review` 스킬 기준 적용).
 
 ## 로드맵
 
 - Refresh Token · RBAC · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · GitHub Actions
-- [ ] **TDD/품질 게이트 자동화 (Claude Code skills + hooks)** — 편집 시 PostToolUse 자동 포맷 +
-      종료 시 Stop 게이트로 `test`/`lint`/`prettier --check` 차단. 상세 설계:
-      [`docs/quality-gate.md`](docs/quality-gate.md).

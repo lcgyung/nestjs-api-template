@@ -12,17 +12,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm run test
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm test
 
   e2e:
     name: E2E (MySQL)
+    # DB 의존 단계(마이그레이션/시드/e2e)는 기본 스킵. 리포지토리 변수 RUN_E2E=true 일 때만 실행.
+    # 활성화: Settings → Secrets and variables → Actions → Variables → New repository variable
+    #   Name: RUN_E2E  /  Value: true
+    if: ${{ vars.RUN_E2E == 'true' }}
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -48,11 +53,12 @@ jobs:
       JWT_EXPIRES_IN: 1d
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run migration:run
-      - run: npm run seed
-      - run: npm run test:e2e
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm migration:run
+      - run: pnpm seed
+      - run: pnpm test:e2e

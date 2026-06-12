@@ -24,5 +24,3 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: nodeEnv === 'development',
 });
-
-export default AppDataSource;

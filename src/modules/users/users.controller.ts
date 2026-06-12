@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -17,6 +18,8 @@ import { Roles } from '@/common/decorators/roles.decorator';
 import { Role } from '@/common/enums/role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
+import { PaginatedResponseDto } from '@/common/dto/paginated-response.dto';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { CreateUserDto } from '@/modules/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/modules/users/dto/update-user.dto';
 import { User } from '@/modules/users/entities/user.entity';
@@ -45,8 +48,8 @@ export class UsersController {
   @Get()
   @Roles(Role.Admin)
   @ApiOperation({ summary: '사용자 목록 (admin)' })
-  findAll(): Promise<User[]> {
-    return this.usersService.findAll();
+  findAll(@Query() query: PaginationQueryDto): Promise<PaginatedResponseDto<User>> {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')
