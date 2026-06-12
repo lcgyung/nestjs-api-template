@@ -1,6 +1,6 @@
 {
   "name": "nestjs-api-template",
-  "version": "0.2.2",
+  "version": "0.1.0",
   "description": "JWT 인증·TypeORM·Swagger·검증·로깅이 구성된 프로덕션 지향 NestJS 백엔드 템플릿",
   "license": "MIT",
   "packageManager": "pnpm@11.5.2",
