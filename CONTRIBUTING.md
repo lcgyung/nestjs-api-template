@@ -31,7 +31,9 @@ CI(`.github/workflows/ci.yml`)는 `main`·`dev` 대상 push/PR 에서 lint·type
 - 예: `feat(users): 사용자 목록 조회 페이지네이션 도입`, `fix(ci): Node 22 정렬`.
 
 이 규약은 **`commitlint` + `.husky/commit-msg` 훅이 강제**합니다(`type` 누락·잘못된 type 은 커밋이
-거부됨). 한국어·영문 혼용 subject 는 허용합니다(`subject-case` 비활성). PR 제목도 동일한 컨벤션을 따릅니다.
+거부됨; 설정은 `package.json` 의 `commitlint` 필드). 한국어·영문 혼용 subject 를 쓰는 프로젝트라
+영문 소문자 시작 강제(`subject-case`)는 비활성 — type/scope·header 길이 등 핵심 규약은 그대로
+유지합니다. PR 제목도 동일한 컨벤션을 따릅니다.
 
 ## 버전 규칙
 
@@ -74,6 +76,26 @@ pnpm test                        # 단위 테스트 (*.spec.ts)
 - **CI** — `lint·typecheck·build·test` 를 동일하게 재검사합니다.
 - e2e(`*.e2e-spec.ts`)는 실제 DB 가 필요하므로 빠른 피드백 루프에서는 제외합니다
   (`pnpm test:e2e`, 사전에 `migration:run` + `seed`).
+
+## 머신이 강제하는 스타일
+
+아래는 *관례가 아니라 린터/타입체커가 강제*한다 — 어기면 `pnpm lint`/`typecheck`(따라서 Stop
+게이트·CI·커밋 훅)가 실패한다. 새 코드를 이 스타일에 맞추면 통과한다.
+
+- **네이밍**(`@typescript-eslint/naming-convention`) — 파일은 kebab-case(`*.service.ts` 등),
+  클래스/타입/인터페이스는 PascalCase(+역할 suffix: `…Controller`/`…Service`/`…Dto`), **enum 멤버는
+  PascalCase**(`Role.User`), `private static readonly` 상수는 UPPER_CASE(`SALT_ROUNDS`), 변수/멤버는
+  camelCase. 예외로 데코레이터 팩토리·`DataSource` const 는 PascalCase, env 미러링 클래스
+  (`EnvironmentVariables`)의 프로퍼티는 UPPER_CASE 가 허용된다.
+- **import 정렬**(`simple-import-sort`) — external → `@/` 별칭 → 상대경로 순, 그룹 간 빈 줄. **auto-fix**
+  되므로 저장/커밋 시 자동 정렬된다.
+- **타입 전용 import 는 `import type`**(`consistent-type-imports`, auto-fix). 단 `emitDecoratorMetadata`
+  로 DI/데코레이터 메타데이터에 쓰이는 타입(`Repository<T>` 등)은 값 import 로 남는다(룰이 자동 판별).
+- **기타** — 타입 정의는 `interface`, 배열은 `T[]`, `??`/`?.` 선호, `===` 만, 미사용 지역변수/파라미터
+  금지(`noUnusedLocals`/`noUnusedParameters`; 의도적 미사용은 `_` prefix), 떠도는 Promise 금지
+  (`no-floating-promises` error).
+- **커밋 메시지** — 위 "커밋 컨벤션" 절 참고(`commitlint` 가 type/scope·헤더 길이를 강제,
+  한국어·영문 혼용 subject 허용).
 
 ## Pull Request
 

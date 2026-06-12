@@ -6,6 +6,25 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **하네스 정본-참조 체계 확립** — `review-gate.sh` 가 규약 정본(`docs/api-conventions.md`)
+  전문을 런타임 주입하도록 변경(요지 수동 동기화 0곳), `code-review`·`api-endpoint`·`tdd` 스킬의
+  규약 요지 중복 제거(정본 참조로 전환), `rules/auth.md` paths 를 `src/modules/**` 로 확대,
+  CLAUDE.md 규칙 절 포인터화(175→167줄), `session-context.sh` 중복 규칙 요약 제거.
+- **설정 통합** — `commitlint.config.js`·`.prettierrc` 를 `package.json` 필드로 흡수(파일 -2).
+
+### Fixed
+
+- `scaffold-module` 스킬의 "`@UseGuards` 재부착" 안내가 전역 가드(deny-by-default)
+  규칙과 모순되던 것을 수정.
+
+### Removed
+
+- 완료된 `docs/test-coverage-epic.md`(계획 spec·커버리지 게이트 모두 반영 완료),
+  낡은 `docs/harness-nestjs.md`(점검은 `docs/cc-harness-nestjs.md` 로 일원화 —
+  미완 항목은 README Roadmap 으로 이관).
+
 ## [0.1.0] - 2026-06-10
 
 최초 배포. 프로덕션 지향 NestJS API 백엔드 템플릿의 핵심 스캐폴딩.

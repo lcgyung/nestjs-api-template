@@ -1,6 +1,6 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerStorage } from '@nestjs/throttler';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 
@@ -18,9 +18,19 @@ describe('Auth & Users (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      // 한 IP 에서 다수 로그인 호출이 일어나 로그인 throttle(분당 5)에 걸리므로 e2e 에선 비활성.
-      .overrideGuard(ThrottlerGuard)
-      .useValue({ canActivate: () => true })
+      // 한 IP 에서 다수 로그인 호출이 일어나 로그인 throttle(분당 5)에 걸리므로 e2e 에선 무력화.
+      // 주의: overrideGuard 는 APP_GUARD 로 등록된 가드에는 적용되지 않으므로
+      // 스토리지를 "카운트가 누적되지 않는" 스텁으로 교체해 한도 초과를 차단한다.
+      .overrideProvider(ThrottlerStorage)
+      .useValue({
+        increment: (_key: string, ttl: number) =>
+          Promise.resolve({
+            totalHits: 1,
+            timeToExpire: ttl,
+            isBlocked: false,
+            timeToBlockExpire: 0,
+          }),
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();

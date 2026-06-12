@@ -4,9 +4,9 @@ describe('env validate()', () => {
   // process.env 처럼 모든 값이 문자열인 상태를 모사한다.
   const baseEnv = {
     DB_HOST: 'localhost',
-    DB_PORT: '3306',
+    DB_PORT: '5432',
     DB_NAME: 'app',
-    DB_USERNAME: 'root',
+    DB_USERNAME: 'postgres',
     DB_PASSWORD: 'password',
     JWT_SECRET: 'a-sufficiently-long-secret-1234',
     JWT_EXPIRES_IN: '1d',
@@ -17,7 +17,7 @@ describe('env validate()', () => {
     const config = validate(baseEnv);
     expect(config.PORT).toBe(3000);
     expect(typeof config.PORT).toBe('number');
-    expect(config.DB_PORT).toBe(3306);
+    expect(config.DB_PORT).toBe(5432);
     expect(typeof config.DB_PORT).toBe('number');
     expect(config.NODE_ENV).toBe(NodeEnv.Development);
   });

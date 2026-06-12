@@ -1,0 +1,84 @@
+# API 규약 (정본)
+
+이 문서가 이 템플릿의 **API 응답·예외·DTO/직렬화 규약 정본**이다.
+`api-endpoint` 스킬·`code-review` 스킬·사람 리뷰어가 모두 이 문서를 기준으로 삼고,
+`review-gate.sh` 는 이 문서 전문을 런타임 주입한다 — 규약을 바꿀 땐 **여기만 고치면 된다**(동기화 불요).
+기준 예시(정답 코드)는 `src/modules/users/`(컨트롤러·서비스·DTO)와 `src/common/dto/`다.
+
+## 1. 응답 형태
+
+- **단건 / 생성 / 수정 / `me`** → **엔티티를 직접 반환**한다. 전역 `ClassSerializerInterceptor`가
+  `@Exclude()` 필드(예: password)를 제거한다. **`{ data: ... }` 래핑 금지.**
+- **목록(list)** → 반드시 `PaginatedResponseDto<T>`(`{ items, meta }`)로 반환한다.
+  bare 배열(`T[]`)·`{ data }`·`{ results }` 금지.
+- 전역 `{ data }` 래핑은 **도입하지 않는다**(보일러플레이트·Swagger 타입 비용만 늘고 REST 관용도 깨짐).
+- **상태 코드 명시**: 생성 라우트는 `@HttpCode(HttpStatus.CREATED)`(201), 본문 없는 삭제는
+  `@HttpCode(HttpStatus.NO_CONTENT)`(204)를 명시한다. 조회/수정은 기본 200.
+
+## 2. 페이지네이션 (모든 목록 엔드포인트)
+
+- 쿼리는 공용 `@/common/dto/pagination-query.dto` 의 `PaginationQueryDto`를 `@Query()`로 받는다
+  (기본 `page=1`/`limit=20`, `limit` 최대 100).
+- 서비스는 `findAndCount({ skip, take, order })`로 조회하고
+  `new PaginatedResponseDto(items, total, query)`를 반환한다.
+
+```ts
+// service
+async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<User>> {
+  const [items, total] = await this.repo.findAndCount({
+    skip: (query.page - 1) * query.limit,
+    take: query.limit,
+    order: { id: 'DESC' },
+  });
+  return new PaginatedResponseDto(items, total, query);
+}
+
+// controller
+@Get()
+findAll(@Query() query: PaginationQueryDto): Promise<PaginatedResponseDto<User>> {
+  return this.service.findAll(query);
+}
+```
+
+## 3. 예외 타입 (빌트인 HttpException, 커스텀 클래스 금지)
+
+| 상황                      | 예외                              | 코드 |
+| ------------------------- | --------------------------------- | ---- |
+| 입력 형식/타입 오류       | `BadRequestException` (대개 자동) | 400  |
+| 인증 실패(토큰 없음/만료) | `UnauthorizedException`           | 401  |
+| 권한 없음                 | `ForbiddenException`              | 403  |
+| 리소스 없음               | `NotFoundException`               | 404  |
+| 중복/상태 충돌            | `ConflictException`               | 409  |
+| 형식 OK·의미상 처리 불가  | `UnprocessableEntityException`    | 422  |
+
+- 메시지는 **사용자에게 보여줄 한국어 문장**. 내부 구현/스택/원시 DB 오류를 노출하지 않는다.
+- 커스텀 예외 클래스 계층은 도메인이 복잡해지기 전까지 만들지 않는다. 머신리더블 `code` 필드는 기본 미도입
+  (클라이언트가 메시지 대신 코드로 분기해야 할 때만 도입).
+
+## 4. 쿼리 / 관계
+
+- 목록 = `findAndCount` + `PaginationQueryDto`. 무한정 `find()` 지양.
+- 정렬/필터는 **화이트리스트**(enum/맵)로만 수용. 클라이언트 컬럼명을 `order`/`where`에 직접 넣지 않는다.
+- 복잡 쿼리는 `QueryBuilder`로 **서비스 계층**에. 관계는 `relations`로 **명시적** 로딩(엔티티 `eager: true` 금지).
+- soft-delete가 필요한 엔티티는 `@DeleteDateColumn` + `softRemove()`/`withDeleted` 규칙을 따른다(현재 `User`는 hard delete).
+
+## 5. DTO / 직렬화
+
+- 기본은 **엔티티 반환 + `@Exclude()`/`@Expose()` + 전역 직렬화**. 응답 DTO로 **수동 매핑하지 않는다.**
+- 엔티티와 응답 형태가 실제로 다를 때만 Response DTO 도입 →
+  `plainToInstance(Dto, entity, { excludeExtraneousValues: true })`.
+- 입력은 항상 DTO + class-validator. 수정 DTO는 `PartialType` 유지.
+- **bcrypt 비밀번호 필드**는 `@MinLength(8)` 와 함께 `@MaxLength(72)`(bcrypt 72바이트 한계)를 **항상**
+  건다. 생성·로그인 등 비밀번호를 받는 모든 DTO 에 일관 적용(한쪽만 거는 드리프트 금지).
+
+## 6. 인가 / 소유권 (IDOR/BOLA 방지)
+
+- 인증은 **deny-by-default** 다 — 전역 `JwtAuthGuard` 가 모든 라우트를 보호한다. 인증 없이 열어야
+  하는 라우트만 `@Public()` 을 명시한다(로그인·health 등). 역할 제한은 `@Roles(Role.Admin)`.
+- **본인 리소스만 접근하는 엔드포인트(예: `/orders/:id` 를 일반 사용자가 조회)는 서비스 계층에서
+  "이 리소스가 이 유저의 것인가"를 반드시 확인한다.** `@CurrentUser()` 의 id 와 리소스 소유자 id 를
+  비교하고, 불일치면 `ForbiddenException`(또는 존재를 숨겨야 하면 `NotFoundException`)을 던진다.
+  소유권 검사 없이 `findOne(id)` 결과를 그대로 반환하지 않는다(IDOR).
+- admin 전용이면 라우트에 `@Roles(Role.Admin)` 만으로 충분하다(현재 `users` 가 이 경우 —
+  소유권 표면 없음). 도메인이 본인 리소스를 다루기 시작하면 위 소유권 검증을 추가한다.
+- 권한 시나리오는 e2e 로 검증한다(타 유저/롤 접근 시 403 — `test/app.e2e-spec.ts` 참고).

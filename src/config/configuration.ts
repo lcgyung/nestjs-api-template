@@ -7,9 +7,9 @@ export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
   database: {
     host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '3306', 10),
+    port: parseInt(process.env.DB_PORT ?? '5432', 10),
     name: process.env.DB_NAME ?? 'app',
-    username: process.env.DB_USERNAME ?? 'root',
+    username: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? '',
   },
   jwt: {

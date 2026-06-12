@@ -3,12 +3,12 @@
 JWT 인증, TypeORM, Swagger, 검증·로깅이 구성된 프로덕션 지향 NestJS 백엔드 템플릿.
 
 > **상태:** 핵심 스캐폴딩 완료 — 부트스트랩(`main.ts`)·JWT 인증·users·health·전역 검증/예외
-> 필터/로깅·TypeORM 마이그레이션·단위/e2e 테스트·Docker(MySQL)·GitHub Actions CI 가 구성되어
+> 필터/로깅·TypeORM 마이그레이션·단위/e2e 테스트·Docker(PostgreSQL)·GitHub Actions CI 가 구성되어
 > 있습니다. 미구현 항목은 하단 [Roadmap](#roadmap) 참고.
 
 ## Stack
 
-NestJS · TypeScript · TypeORM · MySQL · JWT · Swagger · class-validator · Winston · ESLint · Prettier · Husky
+NestJS · TypeScript · TypeORM · PostgreSQL · JWT · Swagger · class-validator · Winston · ESLint · Prettier · Husky
 
 ## Features
 
@@ -34,7 +34,7 @@ cd nestjs-api-template
 corepack enable             # pnpm 활성화 (packageManager 필드 기준 버전 고정)
 pnpm install
 cp .env.example .env        # 값 채우기
-docker compose up -d mysql  # 로컬 DB
+docker compose up -d postgres  # 로컬 DB
 pnpm start:dev
 ```
 
@@ -47,9 +47,9 @@ NODE_ENV=development
 PORT=3000
 
 DB_HOST=localhost
-DB_PORT=3306
+DB_PORT=5432
 DB_NAME=app
-DB_USERNAME=root
+DB_USERNAME=postgres
 DB_PASSWORD=password
 
 JWT_SECRET=             # openssl rand -base64 32 (16자 이상 필수)
@@ -108,7 +108,7 @@ flowchart LR
   VP --> C["Controllers<br/>auth · users · health"]
   C --> S[Services]
   S --> R[TypeORM Repository]
-  R --> DB[(MySQL)]
+  R --> DB[(PostgreSQL)]
 
   subgraph CROSS["횡단 관심사 (전역 등록)"]
     F[AllExceptionsFilter]
@@ -144,17 +144,19 @@ pnpm build                 # 컴파일 (nest build + tsc-alias 경로 별칭 변
 pnpm lint                  # ESLint
 pnpm format                # Prettier --write
 pnpm test                  # 단위 테스트
-pnpm test:e2e              # e2e 테스트 (실제 DB 필요)
+pnpm test:e2e              # e2e 테스트 (testcontainers 가 PG 자동 기동 — Docker 데몬만 필요)
 pnpm migration:generate src/database/migrations/<Name>  # 마이그레이션 생성
 pnpm migration:run         # 마이그레이션 실행
 pnpm seed                  # 기본 admin 계정 시드
 pnpm openapi:generate      # docs/openapi.json 생성 (DB 불필요 — 프론트 타입 생성 소스)
 ```
 
-> **DB 초기화 순서:** `docker compose up -d mysql` → `pnpm migration:run` → `pnpm seed`.
+> **DB 초기화 순서:** `docker compose up -d postgres` → `pnpm migration:run` → `pnpm seed`.
 > 경로 별칭 `@/*` → `src/*` 는 `tsconfig`·Jest·런타임(`tsc-alias`/`tsconfig-paths`) 모두에 설정됩니다.
 
-> **CI 의 DB 의존 e2e:** GitHub Actions 의 `e2e` 잡(마이그레이션·시드·e2e)은 기본 스킵이며,
+> **e2e 의 DB 격리:** e2e 는 testcontainers 가 전용 PostgreSQL 컨테이너를 띄우고
+> 마이그레이션·시드까지 자동 수행하므로(compose DB 불필요) Docker 데몬만 있으면 됩니다.
+> colima 사용 시 소켓을 자동 인식합니다. GitHub Actions 의 `e2e` 잡은 기본 스킵이며,
 > 리포지토리 변수 `RUN_E2E=true`(Settings → Secrets and variables → Actions → Variables) 일 때만
 > 실행됩니다. `lint·build·단위 테스트` 잡은 항상 실행됩니다.
 
@@ -183,12 +185,18 @@ pnpm openapi:generate      # docs/openapi.json 생성 (DB 불필요 — 프론�
 }
 ```
 
-예) `GET /users?page=1&limit=10`. 응답 형태·예외 매핑·DTO 직렬화 등 세부 규약은
-[`.claude/skills/api-endpoint/SKILL.md`](.claude/skills/api-endpoint/SKILL.md) 참고.
+예) `GET /users?page=1&limit=10`. 응답 형태·예외 매핑·DTO 직렬화 등 세부 규약 정본은
+[`docs/api-conventions.md`](docs/api-conventions.md) 참고.
 
 ## Roadmap
 
-Refresh Token · RBAC 확장 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹)
+- Refresh Token(회전·서버측 폐기 — [ADR 0006](docs/adr/0006-refresh-토큰-회전-보류.md)로 보류 중) ·
+  SSO/소셜 로그인 · Redis Cache · BullMQ · S3 Upload · OpenTelemetry · Sentry(에러 트래킹) ·
+  도메인 용어집(도메인이 users 외로 늘어날 때)
+- **인증 프로파일(MVP/Production)** — 인증을 _자격증명 전략(ID/PW·외부 본인인증·SSO) + 공통 세션 골격_
+  으로 보고, MVP 프로파일에선 외부 본인인증 전략만 켜고 일부 보안 자동화(SAST·SBOM·위협모델 풀버전 등)를
+  보류한다. ID/PW 로그인은 삭제하지 않고 비활성 보존한다. 근거·범위는
+  [ADR 0007](docs/adr/0007-인증-프로파일-분리-자격증명-전략.md).
 
 ## Contributing & Conventions
 
