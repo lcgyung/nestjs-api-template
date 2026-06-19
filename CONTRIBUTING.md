@@ -71,8 +71,10 @@ pnpm test                        # 단위 테스트 (*.spec.ts)
 
 - **커밋 훅**(Husky + lint-staged) — 변경 파일에 `eslint --fix` + `prettier`, 그리고
   `commit-msg` 훅이 `commitlint` 로 커밋 메시지 규약을 검사합니다.
-- **Stop 게이트**(`.claude/`) — Claude Code 세션 종료 전 `tsc --noEmit` + `eslint` +
-  `prettier --check` + 유닛 `jest` 를 누적 검사합니다. PR 전 위 4개를 통과시키세요.
+- **Stop 게이트**(`.claude/`) — Claude Code 세션 종료 전 단계별 fail-fast 로 `tsc --noEmit` + `eslint` +
+  `prettier --check` + `check:migrations`(마이그레이션 `up()` 파괴적 DDL 가드) + `check:api-tests`(변경분
+  한정 테스트 3종: controller/service spec·e2e) + 유닛 `jest` 를 검사하고, 통과 시 변경된 `src` 를
+  헤드리스로 의미 리뷰합니다. PR 전 이 게이트를 통과시키세요.
 - **CI** — `lint·typecheck·build·test` 를 동일하게 재검사합니다.
 - e2e(`*.e2e-spec.ts`)는 실제 DB 가 필요하므로 빠른 피드백 루프에서는 제외합니다
   (`pnpm test:e2e`, 사전에 `migration:run` + `seed`).

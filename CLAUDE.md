@@ -26,6 +26,7 @@ pnpm start:dev                   # 개발 서버 (watch)
 pnpm build                       # nest build + tsc-alias (dist 경로 별칭 치환)
 pnpm lint                        # ESLint  /  pnpm lint:fix 로 자동 수정
 pnpm format                      # Prettier --write
+pnpm knip                        # dead code/unused export 탐지 (Pattern Contamination)
 
 pnpm test                        # 단위 테스트 전체 (Jest, *.spec.ts)
 pnpm test users.service          # 파일명 패턴으로 일부만 실행
@@ -33,6 +34,8 @@ pnpm exec jest src/modules/users/users.service.spec.ts    # 단일 파일
 pnpm exec jest -t "should hash password"                  # 테스트명(-t)으로 단일 케이스
 pnpm test:cov                    # 커버리지
 pnpm test:e2e                    # e2e (testcontainers 가 PG 자동 기동 — Docker 데몬만 필요)
+pnpm check:api-tests             # 변경분 한정 — 컨트롤러에 controller/service spec·e2e 누락 차단(Stop 게이트가 사용)
+pnpm check:migrations            # 마이그레이션 up() 의 미승인 파괴적 DDL 차단(DB 불필요; Stop 게이트·CI 가 사용)
 
 pnpm exec tsc --noEmit -p tsconfig.json   # 타입체크 단독 실행 (전용 스크립트 없음; Stop 게이트가 사용)
 
@@ -139,15 +142,20 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
 
 `.claude/settings.json` 이 훅을 등록한다. 코드를 만질 때 아래 동작을 전제로 한다.
 
-- **SessionStart** → `session-context.sh`: 브랜치 등 컨텍스트를 주입.
+- **SessionStart** → `session-context.sh`(브랜치 등 컨텍스트 주입) + `contamination-report.sh`(knip 으로
+  dead code/unused export 후보를 "오염 맵"으로 주입 — 탐지·인지 전용, 옵트인 `CC_CONTAMINATION_REPORT=1`.
+  캐시·타임아웃·미설치 시 비차단. 정책 정본은 `.claude/rules/pattern-contamination.md`).
 - **PreToolUse(Bash)** → `guard-bash.sh`(파괴적 명령 차단: `rm -rf /`, force push, `reset --hard`,
   DROP/TRUNCATE) + `guard-psql.sh`(psql 은 `-c '<SELECT...>'` 단일 읽기 구문만 허용 — db-reader 가드,
   케이스 테스트는 `guard-psql.test.sh`). `permissions.deny` 가 sudo·publish 등을 이중 차단.
 - **PostToolUse(Edit/Write)** → `format-changed-file.sh`: 변경된 `*.ts` 에 `eslint --fix` + `prettier` 자동 적용.
-- **Stop** → `gate.sh`: 세션 종료 전 정적 검사 `tsc --noEmit` + `eslint` + `prettier --check` 후
-  **유닛 `jest`**(`*.spec.ts`만; e2e 제외) 게이트. 통과 시 `review-gate.sh` 가 변경된 `src/*.ts` 를
-  헤드리스 haiku 로 의미 리뷰한다 — **규약 정본(`docs/api-conventions.md`) 전문을 런타임
-  주입**(동기화 불요). blocker 시 `exit 2`, 라운드 상한 2회, `claude` 미설치/타임아웃 시 비차단.
+- **Stop** → `gate.sh`: 세션 종료 전 단계별 fail-fast(+타임아웃) 정적 검사 `tsc --noEmit` + `eslint` +
+  `prettier --check {src,test,scripts}` + `check:migrations`(마이그레이션 `up()` 파괴적 DDL 가드) +
+  **`check:api-tests`(변경분 한정 — 작업이 들어간 모듈의 컨트롤러에 controller/service spec·e2e 가 없으면
+  차단; 엔티티 전용·미변경 모듈은 무시)** 후 **유닛 `jest`**(`*.spec.ts`만; e2e 제외) 게이트(src/test 변경이
+  없으면 전체 스킵). 통과 시 `review-gate.sh` 가 변경된 `src/*.ts` 를 헤드리스 haiku 로 의미 리뷰한다 —
+  **규약 정본(`docs/api-conventions.md`) 전문을 런타임 주입**(동기화 불요). blocker 시 `exit 2`,
+  라운드 상한 default 1·강제 모드 2, `claude` 미설치/타임아웃 시 비차단.
   `CC_AUTO_REVIEW=1`(settings.json `env`)로 상시 활성(끄려면 값 제거/`0`).
 - **모드별 분기(보상 통제)** → 훅이 stdin 의 `permission_mode` 를 읽어 강도를 조절한다(사람 확인이
   빠지는 모드일수록 더 조인다). `plan` → `gate.sh` 가 정적검사·테스트·리뷰를 **스킵**(변경 0이라 무의미).
@@ -156,14 +164,15 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   (없으면 자율 push 로 보아 차단 — `guard-bash.test.sh` 로 케이스 고정), `review-gate.sh` 는
   `CC_AUTO_REVIEW` 옵트인과 **무관하게 리뷰 강제**(라운드 상한 +1). 파괴적 명령(`rm -rf /`·force push 등)과
   `settings.json` 의 정적 `permissions.deny` 는 **모드 무관 고정**.
-- **경로 스코프 규칙(`.claude/rules/`)** → `controllers`·`dto-validation`·`migrations`·`auth`·`testing`.
+- **경로 스코프 규칙(`.claude/rules/`)** → `controllers`·`dto-validation`·`migrations`·`auth`·`testing`·`pattern-contamination`(ELEMENT 1: 경쟁 패턴 통일·dead code 제거·`chore(cleanup)` 분리 커밋).
   frontmatter `paths` 글롭에 맞는 파일을 만질 때만 자동 로드된다(CLAUDE.md 비대화 방지) —
   이 문서의 요지 뒤에 숨은 상세 규칙은 거기에 있다.
 - **스킬(`.claude/skills/`)** → `code-review`(백엔드 리뷰 기준), `api-endpoint`(정본
   `docs/api-conventions.md` 의 절차 래퍼), `scaffold-module`(신규 모듈 스캐폴딩 —
   `src/modules/users/` 를 살아있는 템플릿으로 미러링), `migration-workflow`(마이그레이션
   생성→검토→적용 절차), `write-e2e`(testcontainers e2e 작성 절차), `tdd`(`/tdd` —
-  RED→GREEN→REFACTOR). 작업 맥락에 맞춰 자동 로드된다.
+  RED→GREEN→REFACTOR), `contamination-sweep`(전체 코드베이스 Pattern Contamination 정기 스윕 — 전용 세션).
+  작업 맥락에 맞춰 자동 로드된다.
 - **서브에이전트(`.claude/agents/`)** → 역할별 모델 차등 고정(판단=opus, 실행=haiku — ADR 0010):
   `code-reviewer`(opus)·`security-reviewer`(opus, 읽기전용+memory)·`migration-reviewer`(opus)·
   `test-runner`(haiku, 실패만 요약)·`db-reader`(haiku, psql SELECT 전용 — guard-psql 이 강제).
