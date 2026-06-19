@@ -16,6 +16,7 @@
     "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,test,scripts}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test,scripts}/**/*.ts\" --fix",
+    "knip": "knip --include files,exports",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -28,6 +29,9 @@
     "migration:revert": "pnpm run typeorm migration:revert",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed.ts",
     "openapi:generate": "ts-node -r tsconfig-paths/register scripts/generate-openapi.ts",
+    "check:migrations": "ts-node -r tsconfig-paths/register scripts/check-migration-safety.ts",
+    "check:api-tests": "bash scripts/check-api-tests.sh",
+    "check:hooks": "bash .claude/hooks/guard-bash.test.sh && bash .claude/hooks/guard-psql.test.sh && bash .claude/hooks/gate.test.sh && bash .claude/hooks/review-gate.test.sh",
     "prepare": "husky"
   },
   "dependencies": {
@@ -80,6 +84,7 @@
     "globals": "^17.6.0",
     "husky": "^9.1.7",
     "jest": "^30.4.2",
+    "knip": "^6.16.1",
     "lint-staged": "^17.0.7",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",

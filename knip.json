@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.ts",
+    "src/**/*.module.ts",
+    "src/database/data-source.ts",
+    "test/**/*.e2e-spec.ts",
+    "src/**/*.spec.ts"
+  ],
+  "project": ["src/**/*.ts"],
+  "ignore": ["src/database/migrations/**"]
+}

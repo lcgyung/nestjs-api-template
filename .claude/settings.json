@@ -1,5 +1,5 @@
 {
-  "env": { "CC_AUTO_REVIEW": "1" },
+  "env": { "CC_AUTO_REVIEW": "1", "CC_CONTAMINATION_REPORT": "1" },
   "permissions": {
     "deny": [
       "Bash(sudo:*)",
@@ -15,7 +15,14 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-context.sh" }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-context.sh"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/contamination-report.sh"
+          }
         ]
       }
     ],

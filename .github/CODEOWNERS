@@ -1,0 +1,14 @@
+# Code owners — PR 필수 리뷰 라우팅(브랜치 보호의 "Require review from Code Owners" 와 함께 사용).
+# 기본 소유자: 저장소 소유자. 팀/조직 사용 시 @org/team 핸들로 교체한다.
+# 참고: private + GitHub Free 플랜에서는 코드오너 자동 리뷰 요청·브랜치 보호가 비활성이다
+#       (Pro/Team 이상 또는 public 전환 시 활성화). 파생 프로젝트와의 파일 일관성 차원에서 둔다.
+* @lcgyung
+
+# 보안에 민감한 표면은 별도 명시(필요 시 보안 담당자로 분리).
+/.github/workflows/        @lcgyung
+/.gitleaks.toml            @lcgyung
+/src/config/               @lcgyung
+/src/modules/auth/         @lcgyung
+/src/database/migrations/  @lcgyung
+/src/main.ts               @lcgyung
+/src/app.module.ts         @lcgyung

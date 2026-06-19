@@ -16,3 +16,10 @@ allowBuilds:
 # (GHSA-34x7-hfp2-rc4v 외 5건, 패치는 7.5.11+). node-pre-gyp 의 tar 사용부(extract)는 7.x 와 호환.
 overrides:
   tar: ^7.5.11
+  # @nestjs/platform-express 가 끌고 오는 multer <2.2.0 의 DoS 2건을 패치 버전으로 승격한다
+  # (GHSA-72gw-mp4g-v24j: HIGH, 깊게 중첩된 필드명 / GHSA-3p4h-7m6x-2hcm: 중단된 업로드 정리 누락).
+  # 앱은 파일 업로드를 사용하지 않는 transitive 의존성이며, 2.x 동일 메이저 내 patch 범프라 호환.
+  multer: ^2.2.0
+  # @nestjs/swagger 가 끌고 오는 js-yaml <4.1.2 의 merge-key quadratic DoS (GHSA-h67p-54hq-rp68).
+  # 4.2.0 은 이미 의존성 트리에 존재 — 4.x 동일 메이저 내 minor 범프라 호환.
+  js-yaml: ^4.2.0
