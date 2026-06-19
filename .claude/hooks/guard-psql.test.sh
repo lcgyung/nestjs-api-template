@@ -39,4 +39,28 @@ t "멀티라인 커밋"      $'git commit -m "feat: guard-psql.sh 추가\n\nCo-A
 t "체인 뒤 호출"       'echo hi && psql -c "SELECT 1"'                                      ALLOW
 t "체인 뒤 쓰기"       'echo hi && psql -c "DELETE FROM users"'                             DENY
 
+# 부작용 키워드 보강 — 다중문 우회(SELECT 로 시작 후 부작용문) 차단
+t "다중문 ANALYZE"     'psql -c "SELECT 1; ANALYZE users"'                                  DENY
+t "다중문 CHECKPOINT"  'psql -c "SELECT 1; CHECKPOINT"'                                     DENY
+t "다중문 NOTIFY"      'psql -c "SELECT 1; NOTIFY ch"'                                      DENY
+t "다중문 EXECUTE"     'psql -c "SELECT 1; EXECUTE stmt"'                                   DENY
+t "VACUUM"             'psql -c "VACUUM"'                                                   DENY
+t "REFRESH MV"         'psql -c "REFRESH MATERIALIZED VIEW mv"'                             DENY
+# EXPLAIN ANALYZE 는 읽기 진단이라 허용(analyze 는 문장 위치에서만 거부)
+t "EXPLAIN ANALYZE"    'psql -c "EXPLAIN ANALYZE SELECT * FROM users"'                      ALLOW
+
+# fail-closed: 깨진/빈 stdin 은 통과가 아니라 차단
+fc() { # <label> <raw-stdin>
+  local label=$1 raw=$2 out
+  out=$(printf '%s' "$raw" | ./guard-psql.sh 2>/dev/null || true)
+  if printf '%s' "$out" | grep -q '"permissionDecision":"deny"'; then
+    echo "PASS [$label] → DENY"
+  else
+    echo "FAIL [$label] → ALLOW (expect DENY=fail-closed)"
+    FAILED=1
+  fi
+}
+fc "malformed stdin fail-closed" 'not json'
+fc "empty stdin fail-closed" ''
+
 exit "$FAILED"

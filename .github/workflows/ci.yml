@@ -24,8 +24,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      # 훅 회귀 가드 — guard-bash/guard-psql/gate/review-gate 의 .test.sh (jq·git 만 필요, claude 는 스텁)
+      - run: pnpm check:hooks
       - run: pnpm build
       - run: pnpm test:cov
+      # 마이그레이션 데이터 손실 가드(DB 불필요) — up() 의 미승인 파괴적 DDL 차단
+      - run: pnpm check:migrations
       # OpenAPI 스펙 드리프트 게이트 — 커밋된 docs/openapi.json 이 코드와 일치해야 한다
       - run: pnpm openapi:generate
       - run: git diff --exit-code -- docs/openapi.json
@@ -33,19 +37,20 @@ jobs:
   security:
     name: Security (gitleaks · pnpm audit)
     runs-on: ubuntu-latest
-    # gitleaks-action 은 pull_request 이벤트에서 PR 커밋 목록(/pulls/:n/commits)을 조회하므로
-    # pull-requests:read 가 없으면 403(Resource not accessible by integration)으로 실패한다.
     permissions:
       contents: read
-      pull-requests: read
     steps:
       - uses: actions/checkout@v6
         with:
           # 히스토리 포함 시크릿 스캔 (리포가 작아 비용 미미)
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 시크릿 스캔(전체 히스토리) — 핀 고정 Docker 로 통일(gitleaks-action 의 GITLEAKS_LICENSE·
+      # PR fetch 권한 의존 제거). .gitleaks.toml 의 allowlist 를 적용한다.
+      - name: Secret scan (gitleaks, 전체 히스토리)
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /repo --redact --no-banner --config=/repo/.gitleaks.toml
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:

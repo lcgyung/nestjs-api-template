@@ -7,8 +7,17 @@
 # 아니므로, 호출 감지·플래그 검사는 인용부를 제거한 문자열에서 수행한다.
 # 심층 방어: db-reader 본문이 PGOPTIONS='-c default_transaction_read_only=on' 사용을 지시한다.
 set -euo pipefail
+
+# 공용 헬퍼(pretooluse_deny_raw) — 단일 정본 .claude/hooks/lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+# fail-closed: 내부 오류(jq 부재·stdin 파싱 실패 등)는 통과가 아니라 차단(guard-bash 와 동일 원칙).
+trap 'pretooluse_deny_raw "guard-psql 내부 오류 — 안전을 위해 차단(fail-closed)"; exit 0' ERR
+
 INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+# stdin 이 JSON 객체가 아니면(빈/공백/깨진 입력·jq 부재 포함) 차단.
+printf '%s' "$INPUT" | jq -e 'type == "object"' >/dev/null 2>&1 \
+  || { pretooluse_deny_raw "guard-psql: stdin 이 JSON 객체가 아님 — 안전을 위해 차단(fail-closed)"; exit 0; }
+CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty')
 
 deny() {
   jq -n --arg r "$1" '{
@@ -49,8 +58,11 @@ SQL=$(printf '%s' "$CMD_NO_ENV" | sed -nE 's/.*(-c|--command)[[:space:]=]+"([^"]
 printf '%s' "$SQL" | grep -qiE '^[[:space:]]*(select|with|explain|show|\\d[a-zA-Z+]*|\\l)' \
   || deny "psql: SELECT/WITH/EXPLAIN/SHOW(또는 \\d 메타)로 시작하는 읽기 쿼리만 허용"
 
-# denylist: writable CTE·read-only 해제 등 쓰기 가능 키워드가 어디든 있으면 거부
-printf '%s' "$SQL" | grep -qiE '(^|[^a-z])(insert|update|delete|truncate|drop|alter|create|grant|revoke|copy|vacuum|call|do|merge|set|begin|commit|rollback|lock|comment|reindex|cluster|refresh)([^a-z]|$)' \
-  && deny "psql: 쓰기/DDL/트랜잭션 키워드 차단 (읽기 전용)"
+# denylist: writable CTE·read-only 해제·세션 부작용 등 쓰기/부작용 키워드가 어디든 있으면 거부.
+printf '%s' "$SQL" | grep -qiE '(^|[^a-z])(insert|update|delete|truncate|drop|alter|create|grant|revoke|copy|vacuum|call|do|merge|set|begin|commit|rollback|lock|comment|reindex|cluster|refresh|checkpoint|prepare|execute|deallocate|discard|listen|unlisten|notify)([^a-z]|$)' \
+  && deny "psql: 쓰기/DDL/트랜잭션/부작용 키워드 차단 (읽기 전용)"
+# ANALYZE 는 문장 위치(시작·세미콜론 뒤)에서만 거부 — 'EXPLAIN ANALYZE'(읽기 진단)는 허용. 'SELECT 1; ANALYZE t' 다중문 우회 차단.
+printf '%s' "$SQL" | grep -qiE '(^|;)[[:space:]]*analyze([^a-z]|$)' \
+  && deny "psql: ANALYZE 문 차단 (읽기 전용) — EXPLAIN ANALYZE 는 허용"
 
 exit 0

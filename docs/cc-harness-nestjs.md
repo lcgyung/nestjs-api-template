@@ -46,6 +46,7 @@
 - [x] 🟢 `rules/migrations.md` — 적용본 불변, PG enum TYPE·@UpdateDateColumn 특이사항, down 가역성
 - [x] 🟢 `rules/auth.md` — deny-by-default, 소유권 검증(IDOR 방지) 필수 패턴
 - [x] 🟢 `rules/testing.md` — testcontainers 격리(ADR 0009), 인증/인가 e2e 필수
+- [x] 🟢 `rules/pattern-contamination.md` — ELEMENT 1: 경쟁 패턴 통일·dead code 제거·`chore(cleanup)` 분리 커밋(`src/**`)
 
 ## 3. skills/ (반복 절차 — 호출 시 로드)
 
@@ -55,6 +56,7 @@
 - [x] 🟢 `skills/migration-workflow/` — 마이그레이션 생성→검토→적용→드리프트 확인 표준 절차
 - [x] 🟢 `skills/write-e2e/` — e2e 작성 절차(testcontainers 전제·보일러플레이트·필수 시나리오)
 - [x] 🟢 `skills/api-endpoint/` — 정본 `docs/api-conventions.md` 의 절차 래퍼(이중 정본 방지)
+- [x] 🟢 `skills/contamination-sweep/` — 전체 코드베이스 Pattern Contamination 정기 스윕(knip, 전용 세션)
 - [x] 🟢 description 구체화 — 트리거 문구("마이그레이션 만들어", "e2e 테스트 작성" 등) 포함
 - [x] 🟢 스킬 본문 포인터화 — 규약 요지를 스킬에 중복하지 않고 정본 절 번호로 참조(원칙 5)
 
@@ -72,12 +74,13 @@
 
 `.claude/settings.json`. **모델이 우회할 수 없는** 계층.
 
+- [x] 🟢 `SessionStart` → `session-context.sh`(브랜치 컨텍스트) + `contamination-report.sh`(knip 오염 맵 주입, 옵트인 `CC_CONTAMINATION_REPORT`, 캐시·비차단)
 - [x] 🟢 `PostToolUse` (Edit|Write) → `prettier --write` + `eslint --fix` (포맷 항상 동일)
 - [x] ❌ `PostToolUse` typecheck — **의도적 비채택**(ADR 0010): PostToolUse 는 차단 불가(이미 실행됨) + Stop 게이트가 풀 `tsc --noEmit` 을 이미 강제 + 편집마다 풀 tsc 는 루프만 느리게 함
 - [x] 🟢 `PreToolUse` (Bash) → `guard-bash.sh`: DROP/TRUNCATE 등 파괴적 DB 명령 차단 (exit 2 대신 deny JSON)
-- [x] 🟢 `PreToolUse` (Bash) → `rm -rf`/force push/reset --hard 차단 + `guard-psql.sh`(읽기전용, 21케이스 테스트)
-- [x] 🟢 `Stop` 게이트 → `tsc --noEmit` + `eslint` + `prettier --check` + 유닛 `jest` 미통과 시 차단(exit 2),
-      통과 시 `review-gate.sh` 의미 리뷰(haiku, **규약 정본 전문 런타임 주입** — 동기화 0, CC_AUTO_REVIEW=1 상시)
+- [x] 🟢 `PreToolUse` (Bash) → `rm -rf`/force push/reset --hard 차단(`git -c/-C` prefix 우회 가드) + `guard-psql.sh`(읽기전용). 가드/게이트 회귀는 `pnpm check:hooks`(4종 `.test.sh`)
+- [x] 🟢 `Stop` 게이트 → 단계별 fail-fast(+타임아웃) `tsc --noEmit` + `eslint` + `prettier --check` + `check:migrations` + `check:api-tests`(변경분 한정) + 유닛 `jest` 미통과 시 차단(exit 2),
+      통과 시 `review-gate.sh` 의미 리뷰(haiku, **규약 정본 전문 런타임 주입** — 동기화 0, CC_AUTO_REVIEW=1 상시). 공용 헬퍼는 `hooks/lib.sh` 정본
 - [ ] (선택) `SubagentStop` — 현재 정리할 자원 없음(db-reader 는 구문당 단발 접속). 필요 시 추가
 
 > 점검 포인트: "테스트 통과 후 완료"를 CLAUDE.md 문장으로만 두면 ~70%만 지켜짐. **hook으로 박으면 100%** → 매회 동일 품질.
@@ -103,8 +106,8 @@
 | 구성요소     | 존재 | 최적화                | 결정성 기여   | 비고                                   |
 | ------------ | ---- | --------------------- | ------------- | -------------------------------------- |
 | CLAUDE.md    | ✅   | ✅ (167줄)            | 컨텍스트 예산 | 상세는 rules/docs 로 위임              |
-| rules/       | ✅   | ✅ (paths 글롭)       | 부분 로드     | 5종                                    |
-| skills/      | ✅   | ✅ (구체 description) | 절차 고정     | 6종 (api-endpoint 는 정본 래퍼)        |
+| rules/       | ✅   | ✅ (paths 글롭)       | 부분 로드     | 6종 (pattern-contamination 포함)       |
+| skills/      | ✅   | ✅ (구체 description) | 절차 고정     | 7종 (api-endpoint 는 정본 래퍼)        |
 | subagents/   | ✅   | ✅ (model 차등 고정)  | 컨텍스트 격리 | 5종, ADR 0010                          |
 | hooks        | ✅   | ✅ (불변식 강제)      | **최고**      | PostToolUse typecheck 만 의도적 비채택 |
 | docs/        | ✅   | ✅ (참조 위임)        | 예산 절약     | architecture·api-conventions·adr       |
@@ -114,11 +117,11 @@
 
 ```
 .claude/
-├── rules/                   # controllers, dto-validation, migrations, auth, testing (paths 글롭)
-├── skills/                  # api-endpoint(래퍼), code-review, scaffold-module, migration-workflow, write-e2e, tdd
+├── rules/                   # controllers, dto-validation, migrations, auth, testing, pattern-contamination (paths 글롭)
+├── skills/                  # api-endpoint(래퍼), code-review, scaffold-module, migration-workflow, write-e2e, tdd, contamination-sweep
 ├── agents/                  # code-reviewer, security-reviewer, migration-reviewer, test-runner, db-reader
-├── hooks/                   # session-context, guard-bash, guard-psql(+test), format-changed-file, gate, review-gate
-└── settings.json            # hooks 체인 + permissions.deny + CC_AUTO_REVIEW
+├── hooks/                   # lib(공용), session-context, contamination-report, guard-bash(+test), guard-psql(+test), format-changed-file, gate(+test), review-gate(+test)
+└── settings.json            # hooks 체인 + permissions.deny + CC_AUTO_REVIEW + CC_CONTAMINATION_REPORT
 CLAUDE.md                    # 167줄, 불변 규칙 + 참조 포인터 (루트 — Claude Code 표준 위치)
 docs/                        # architecture, api-conventions(정본), adr/(0001~0010), 위협모델·보안 체크리스트
 ```
