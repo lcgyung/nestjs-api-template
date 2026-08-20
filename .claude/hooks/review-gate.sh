@@ -9,7 +9,7 @@ set -uo pipefail
 
 [ -n "${CC_GATE_SKIP:-}" ] && exit 0 # 중첩 리뷰(claude -p)가 게이트를 재트리거하는 재귀 방지(최우선)
 
-# 공용 헬퍼(run_with_timeout 등) — 단일 정본 .claude/hooks/lib.sh
+# 공용 헬퍼(run_headless_claude·git_dir·mk_tmp 등) — 단일 정본 .claude/hooks/lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 INPUT=$(cat 2>/dev/null || true) # Stop stdin(JSON) — 모드 분기에 사용
@@ -19,10 +19,9 @@ MODE=$(printf '%s' "$INPUT" | jq -r '.permission_mode // "default"' 2>/dev/null 
 case "$MODE" in default | plan) FORCE="" ;; *) FORCE=1 ;; esac
 [ -z "$FORCE" ] && [ -z "${CC_AUTO_REVIEW:-}" ] && exit 0 # default 모드는 기존 옵트인 유지
 
-ROUND_FILE=".git/cc_review_round"
+ROUND_FILE="$(git_dir)/cc_review_round" # worktree 안전(lib.sh git_dir) — ".git/" 하드코딩 금지
 MAX_ROUNDS=$([ -n "$FORCE" ] && echo 2 || echo 1) # default 는 1회만 재수정 요구(오탐 마찰 최소화), 강한 통제(auto)는 +1
 REVIEW_TIMEOUT=150
-REVIEW_MODEL=haiku
 
 # 1) 변경된 src TypeScript 존재 확인(추적 변경 + 미추적 신규). 없으면 통과 + 카운터 리셋.
 #    NUL 구분으로 공백·리네임 안전. 추적 변경은 git diff HEAD, 미추적 신규는 git ls-files --others 가 커버.
@@ -70,9 +69,9 @@ $CONV
 === diff ===
 $DIFF"
 
-# 6) 헤드리스 리뷰(재귀 방지 sentinel + 경량 모델). run_with_timeout 은 lib.sh. 타임아웃/실패 → 빈 출력 → 비차단.
-OUT_F=$(mktemp 2>/dev/null || echo "/tmp/cc_review_$$")
-run_with_timeout "$REVIEW_TIMEOUT" "$OUT_F" env CC_GATE_SKIP=1 claude -p "$PROMPT" --model "$REVIEW_MODEL"
+# 6) 헤드리스 리뷰(재귀 방지 sentinel + 경량 모델). run_headless_claude 는 lib.sh. 타임아웃/실패 → 빈 출력 → 비차단.
+OUT_F=$(mk_tmp cc_review)
+run_headless_claude "$REVIEW_TIMEOUT" "$OUT_F" "$PROMPT"
 OUT=$(cat "$OUT_F" 2>/dev/null || true)
 rm -f "$OUT_F"
 [ -z "$OUT" ] && exit 0 # 인프라 실패/타임아웃 → 막지 않음

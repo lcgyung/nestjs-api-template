@@ -8,27 +8,15 @@
 # 심층 방어: db-reader 본문이 PGOPTIONS='-c default_transaction_read_only=on' 사용을 지시한다.
 set -euo pipefail
 
-# 공용 헬퍼(pretooluse_deny_raw) — 단일 정본 .claude/hooks/lib.sh
+# 공용 헬퍼(deny·require_json_object_or_deny·arm_fail_closed_trap) — 단일 정본 .claude/hooks/lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 # fail-closed: 내부 오류(jq 부재·stdin 파싱 실패 등)는 통과가 아니라 차단(guard-bash 와 동일 원칙).
-trap 'pretooluse_deny_raw "guard-psql 내부 오류 — 안전을 위해 차단(fail-closed)"; exit 0' ERR
+arm_fail_closed_trap guard-psql
 
 INPUT=$(cat)
 # stdin 이 JSON 객체가 아니면(빈/공백/깨진 입력·jq 부재 포함) 차단.
-printf '%s' "$INPUT" | jq -e 'type == "object"' >/dev/null 2>&1 \
-  || { pretooluse_deny_raw "guard-psql: stdin 이 JSON 객체가 아님 — 안전을 위해 차단(fail-closed)"; exit 0; }
+require_json_object_or_deny guard-psql "$INPUT"
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty')
-
-deny() {
-  jq -n --arg r "$1" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $r
-    }
-  }'
-  exit 0
-}
 
 # 인용부('..'/"..")를 제거한 뷰 — psql "호출" 여부와 셸 레벨 플래그/리다이렉트 판단용.
 # sed 는 줄 단위라 멀티라인 인용(커밋 메시지 등)이 깨지므로 개행을 먼저 공백으로 접는다.
