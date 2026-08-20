@@ -31,7 +31,7 @@
     "openapi:generate": "ts-node -r tsconfig-paths/register scripts/generate-openapi.ts",
     "check:migrations": "ts-node -r tsconfig-paths/register scripts/check-migration-safety.ts",
     "check:api-tests": "bash scripts/check-api-tests.sh",
-    "check:hooks": "bash .claude/hooks/guard-bash.test.sh && bash .claude/hooks/guard-psql.test.sh && bash .claude/hooks/gate.test.sh && bash .claude/hooks/review-gate.test.sh",
+    "check:hooks": "bash .claude/hooks/guard-bash.test.sh && bash .claude/hooks/guard-psql.test.sh && bash .claude/hooks/gate.test.sh && bash .claude/hooks/review-gate.test.sh && bash .claude/hooks/auto-commit.test.sh && bash .claude/hooks/record-touched.test.sh",
     "prepare": "husky"
   },
   "dependencies": {
