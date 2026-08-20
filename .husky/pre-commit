@@ -1,6 +1,27 @@
+# husky pre-commit — 모든 커밋(사람·AI)에 엄격 검증을 강제한다(Stop 게이트를 우회한 커밋의 방어선).
+# 실패 시 커밋을 차단하려고 -e. AI auto-commit 은 gate.sh 가 이미 엄격 세트를 통과시켰으므로
+# 센티넬(CC_SKIP_PRECOMMIT_STRICT)로 엄격 블록만 건너뛴다(AI 루프 2배 지연 방지).
+set -e
+
+# 1) 스테이징 파일 자동 정리 (eslint --fix + prettier --write)
 pnpm exec lint-staged
 
-# 시크릿 스캔 — gitleaks 미설치 시 건너뜀 (CI security 잡이 최종 게이트)
+# 2) 엄격 검증 — Stop 게이트(gate.sh)와 동일 세트 + OpenAPI 드리프트.
+#    검증 대상은 인덱스가 아니라 워킹트리 전체다(gate.sh 와 동일 성질) — 스테이징 안 한 변경도 잡힌다.
+if [ -z "${CC_SKIP_PRECOMMIT_STRICT:-}" ]; then
+  pnpm typecheck
+  pnpm lint
+  pnpm exec prettier --check "{src,test,scripts}/**/*.ts"
+  pnpm check:migrations
+  pnpm check:api-tests
+  pnpm exec jest --passWithNoTests
+  # OpenAPI 스펙 드리프트 — CI 와 동일 검사를 로컬에서 선제 차단(DB 불필요, ADR 0004).
+  pnpm openapi:generate
+  git diff --exit-code -- docs/openapi.json \
+    || { echo "[pre-commit] docs/openapi.json 드리프트 — 'git add docs/openapi.json' 후 재커밋"; exit 1; }
+fi
+
+# 3) 시크릿 스캔 — gitleaks 미설치 시 건너뜀 (CI security 잡이 최종 게이트)
 if command -v gitleaks >/dev/null 2>&1; then
   gitleaks git --pre-commit --staged --redact --no-banner
 else

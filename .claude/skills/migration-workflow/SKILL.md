@@ -16,13 +16,11 @@ description: >-
 2. **엔티티 수정** — `src/**/*.entity.ts`. 민감 필드 `@Exclude()` 잊지 말 것.
 3. **생성** — `pnpm migration:generate src/database/migrations/<Name>` (PascalCase 이름).
    - 생성 직후 파일을 프로젝트 컨벤션에 맞게 다듬는다(`import type`, prettier — 훅이 자동 적용).
-4. **생성 SQL 검토** — 적용 전에 반드시. 체크리스트:
-   - 파괴적 변경(`DROP`, 컬럼 타입 축소, default 없는 `NOT NULL`)이 의도된 것인가
-   - **down 이 up 의 완전한 역순인가** — PG 는 enum 이 별도 TYPE 이므로 down 에서
-     테이블과 함께 `DROP TYPE` 까지 제거해야 재적용 가능
-   - enum 값 추가라면 `ALTER TYPE ... ADD VALUE` 사용(트랜잭션 제약 주의)
-   - 대형 테이블 `ALTER` 의 락 시간 고려
-   - 깊은 검토가 필요하면 **migration-reviewer 서브에이전트에 위임**한다
+4. **생성 SQL 검토** — 적용 전에 반드시. **`pnpm check:migrations` 통과**(up() 의 미승인 파괴적 DDL
+   차단; 의도된 파괴면 `// migration-safety-ack: <사유>` 주석으로 승인). 무엇을 보는지의 정본
+   체크리스트는 `.claude/rules/migrations.md` — 파괴적 변경 의도 여부, **down 이 up 의 역순**
+   (PG enum 은 `DROP TYPE` 까지), **enum 값 추가(`ALTER TYPE ... ADD VALUE`)만 안전**, 대형 테이블
+   락 시간. 깊은 검토는 **migration-reviewer 서브에이전트에 위임**한다.
 5. **적용** — `pnpm migration:run`. 롤백 검증까지 하려면 `migration:revert` 후 재적용.
 6. **시드 영향 확인** — 스키마 변경이 `seedAdmin()`(`src/database/seeds/seed.ts`)에 영향을
    주면 함께 수정. 시드는 멱등 유지(CLI 와 e2e globalSetup 이 공유).

@@ -1,7 +1,7 @@
 ---
 name: security-reviewer
 description: 변경분 보안 리뷰 서브에이전트 — IDOR/입력 검증/시크릿/직렬화/인가를 점검한다. 인증·권한·DTO·엔티티 변경 시, PR 전 보안 점검, "보안 리뷰" 요청 시 사용. 읽기 전용.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, Bash
 model: opus
 memory: project
 skills:
@@ -28,7 +28,8 @@ skills:
 
 ## 동작 규약
 
-- 읽기 전용이라 `git diff` 를 실행할 수 없다 — **호출 프롬프트가 검토 대상 파일 목록을 제공**해야
-  하며, 없으면 "검토 대상 파일 목록을 프롬프트로 전달해 달라"고 요청한다.
+- 변경분은 `git diff HEAD -- src` 와 `git status --porcelain` 으로 **직접 수집**한다(읽기 전용 조회 —
+  guard-bash 훅이 파괴적 명령은 차단한다). 호출 프롬프트가 파일 목록을 주면 그것을 우선한다.
+- "읽기 전용"은 **코드를 수정하지 않는다**는 뜻이다 — 진단·git 조회는 수행하되 파일은 고치지 않는다.
 - 발견은 blocker / warning 으로 분류하고 파일·라인·근거·수정안을 제시한다.
 - 새로 발견한 취약 패턴·반복 실수는 memory 에 누적해 다음 리뷰에 활용한다.

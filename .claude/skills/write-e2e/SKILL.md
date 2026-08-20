@@ -52,4 +52,5 @@ await app.init();
 
 - **멱등성** — 반복 실행해도 안전하게. 중복 생성은 409 를 허용 처리(기존 스위트 참고).
 - 파일명은 `test/<feature>.e2e-spec.ts` (`testRegex: .e2e-spec.ts$`).
-- 검증: `pnpm test:e2e` (Stop 게이트엔 미포함 — 직접 실행해 확인).
+- 검증: `pnpm test:e2e`. 로컬 Stop 게이트는 기본 제외(옵트인 `CC_E2E_GATE=1`); **PR 은 CI 가 강제** —
+  직접 실행해 확인한다.

@@ -37,7 +37,8 @@ pnpm test:e2e                    # e2e (testcontainers 가 PG 자동 기동 — 
 pnpm check:api-tests             # 변경분 한정 — 컨트롤러에 controller/service spec·e2e 누락 차단(Stop 게이트가 사용)
 pnpm check:migrations            # 마이그레이션 up() 의 미승인 파괴적 DDL 차단(DB 불필요; Stop 게이트·CI 가 사용)
 
-pnpm exec tsc --noEmit -p tsconfig.json   # 타입체크 단독 실행 (전용 스크립트 없음; Stop 게이트가 사용)
+pnpm typecheck                   # 타입체크 단독 실행 (tsc --noEmit; Stop 게이트가 사용)
+pnpm check:hooks                 # .claude/hooks/*.sh 회귀 케이스 테스트 6종
 
 pnpm migration:generate src/database/migrations/<Name>   # 엔티티 변경 후 생성
 pnpm migration:run               # 마이그레이션 적용  /  migration:revert 로 롤백
@@ -149,6 +150,7 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   DROP/TRUNCATE) + `guard-psql.sh`(psql 은 `-c '<SELECT...>'` 단일 읽기 구문만 허용 — db-reader 가드,
   케이스 테스트는 `guard-psql.test.sh`). `permissions.deny` 가 sudo·publish 등을 이중 차단.
 - **PostToolUse(Edit/Write)** → `format-changed-file.sh`: 변경된 `*.ts` 에 `eslint --fix` + `prettier` 자동 적용.
+  - `record-touched.sh`: **이 세션이 편집한 파일 경로**를 세션별 매니페스트에 기록한다(스코프 게이트·자동 커밋의 입력).
 - **Stop** → `gate.sh`: 세션 종료 전 단계별 fail-fast(+타임아웃) 정적 검사 `tsc --noEmit` + `eslint` +
   `prettier --check {src,test,scripts}` + `check:migrations`(마이그레이션 `up()` 파괴적 DDL 가드) +
   **`check:api-tests`(변경분 한정 — 작업이 들어간 모듈의 컨트롤러에 controller/service spec·e2e 가 없으면
@@ -157,6 +159,13 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   **규약 정본(`docs/api-conventions.md`) 전문을 런타임 주입**(동기화 불요). blocker 시 `exit 2`,
   라운드 상한 default 1·강제 모드 2, `claude` 미설치/타임아웃 시 비차단.
   `CC_AUTO_REVIEW=1`(settings.json `env`)로 상시 활성(끄려면 값 제거/`0`).
+- **게이트 토글(`settings.json` `env`)** → `CC_SCOPED_GATE=1`(기본 ON): 검사를 **내 세션 작업파일**로
+  좁힌다 — typecheck 은 전체로 돌리되 내 파일 에러만 blocker, lint/prettier/jest(`--findRelatedTests`)·
+  `check:api-tests` 는 작업파일 한정. 같은 워킹트리의 다른 세션 미완성 코드가 내 게이트를 막지 않게
+  하기 위함이며, 끄면 전체 검사로 폴백한다. `CC_E2E_GATE=1`(기본 OFF): Stop 에서 `pnpm test:e2e` 까지
+  실행(Docker 없으면 경고 후 스킵). `CC_AUTO_COMMIT=1`(기본 OFF): 게이트 전부 통과 시 작업 컨텍스트만
+  스테이징해 자동 커밋한다(메시지는 헤드리스 haiku, **push 는 하지 않음**, main·무변경은 no-op).
+  자동 커밋 경로는 `CC_SKIP_PRECOMMIT_STRICT=1` 로 `pre-commit` 엄격 블록 중복 실행을 피한다.
 - **모드별 분기(보상 통제)** → 훅이 stdin 의 `permission_mode` 를 읽어 강도를 조절한다(사람 확인이
   빠지는 모드일수록 더 조인다). `plan` → `gate.sh` 가 정적검사·테스트·리뷰를 **스킵**(변경 0이라 무의미).
   `default`/`plan` 외(`acceptEdits`/`auto` 등) → `guard-bash.sh` 가 작업 트리 유실 명령을 **추가 차단**하고
@@ -171,7 +180,9 @@ scripts         # generate-openapi.ts — 빌드에서 제외됨(tsconfig.build.
   `docs/api-conventions.md` 의 절차 래퍼), `scaffold-module`(신규 모듈 스캐폴딩 —
   `src/modules/users/` 를 살아있는 템플릿으로 미러링), `migration-workflow`(마이그레이션
   생성→검토→적용 절차), `write-e2e`(testcontainers e2e 작성 절차), `tdd`(`/tdd` —
-  RED→GREEN→REFACTOR), `contamination-sweep`(전체 코드베이스 Pattern Contamination 정기 스윕 — 전용 세션).
+  RED→GREEN→REFACTOR), `contamination-sweep`(전체 코드베이스 Pattern Contamination 정기 스윕 — 전용 세션),
+  `systematic-debugging`(재현→좁히기→근본원인→회귀), `verification-before-completion`("완료" 선언 전
+  게이트 밖 항목 점검), `writing-skills`(하네스 자체를 손볼 때의 작성 규율 + 템플릿↔파생 백포트 규율).
   작업 맥락에 맞춰 자동 로드된다.
 - **서브에이전트(`.claude/agents/`)** → 역할별 모델 차등 고정(판단=opus, 실행=haiku — ADR 0010):
   `code-reviewer`(opus)·`security-reviewer`(opus, 읽기전용+memory)·`migration-reviewer`(opus)·

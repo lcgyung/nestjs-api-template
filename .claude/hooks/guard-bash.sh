@@ -4,29 +4,17 @@
 #   (PreToolUse 훅이 exit 2 가 아닌 비정상 종료를 하면 명령이 그대로 실행되므로 — fail-open 방지.)
 set -euo pipefail
 
-# 공용 헬퍼(pretooluse_deny_raw 등) — 단일 정본 .claude/hooks/lib.sh
+# 공용 헬퍼(deny·require_json_object_or_deny·arm_fail_closed_trap 등) — 단일 정본 .claude/hooks/lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 # 예기치 못한 오류는 항상 차단으로(jq 없이 동작하는 raw deny).
-trap 'pretooluse_deny_raw "guard-bash 내부 오류 — 안전을 위해 차단(fail-closed)"; exit 0' ERR
+arm_fail_closed_trap guard-bash
 
 INPUT=$(cat)
 # fail-closed: stdin 이 비었거나 JSON 객체가 아니면(빈/공백/깨진 입력·jq 부재 포함) 통과시키지 않고 차단.
-printf '%s' "$INPUT" | jq -e 'type == "object"' >/dev/null 2>&1 \
-  || { pretooluse_deny_raw "guard-bash: stdin 이 JSON 객체가 아님 — 안전을 위해 차단(fail-closed)"; exit 0; }
+require_json_object_or_deny guard-bash "$INPUT"
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty')
 MODE=$(printf '%s' "$INPUT" | jq -r '.permission_mode // "default"')
 TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty')
-
-deny() {
-  jq -n --arg r "$1" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $r
-    }
-  }'
-  exit 0
-}
 
 # git 서브커맨드 앞에 끼는 전역 옵션을 허용하는 prefix 정규식(우회 차단).
 #   예) `git -c user.email=x push --force`, `git -C /repo reset --hard`, `git --no-pager push`
