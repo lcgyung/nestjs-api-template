@@ -33,6 +33,9 @@ tsc/lint 를 통과해도 어긋날 수 있는 의미적 규약은 정본 `docs/
 점검한다. 정본에 없는 추가 점검 항목:
 
 - **신규 모듈** → controller/service/module/spec/dto/entity 표준 파일 셋을 갖췄는가(`scaffold-module` 기준).
+- **테스트 3종(blocker)** → 컨트롤러를 가진 모듈/엔드포인트는 **service spec + controller spec +
+  모듈별 e2e(`test/<feature>.e2e-spec.ts`)** 가 모두 있어야 한다(정본: `.claude/rules/testing.md`
+  "API 완성의 정의"). service spec 만 있고 controller spec·e2e 가 없으면 **미완성(blocker)** 으로 본다.
 - **네이밍 품질** → 네이밍 _형식_(camel/Pascal/UPPER)은 `naming-convention` 룰이 강제하므로, 리뷰는
   *의미*에 집중한다(이름이 역할을 정확히 드러내는가, 약어·오해 소지 없는가).
 

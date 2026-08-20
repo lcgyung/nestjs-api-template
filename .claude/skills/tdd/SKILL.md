@@ -3,7 +3,8 @@ name: tdd
 description: >-
   테스트 주도 개발(RED→GREEN→REFACTOR) 흐름 안내. "TDD로", "테스트 먼저", "실패 테스트부터",
   새 서비스/메서드/기능을 테스트 우선으로 구현할 때 사용. 이 템플릿의 jest(*.spec.ts)·Repository
-  모킹 패턴 기준.
+  모킹 패턴 기준. 경계: 절차(흐름) 스킬이라 모듈/엔드포인트 작업과 병행한다 — 신규 모듈의 파일 구조는
+  scaffold-module, 라우트/응답 규약은 api-endpoint 를 함께 참조한다.
 ---
 
 # 테스트 주도 개발 (RED → GREEN → REFACTOR)
@@ -57,5 +58,6 @@ description: >-
 ## 마무리
 
 - 다음 동작으로 넘어가기 전에 **사이클을 작게** 유지했는지 확인(테스트 1개 → 구현 → 정리).
-- e2e(`test/*.e2e-spec.ts`)는 실제 DB 가 필요하므로 이 빠른 루프에 넣지 않는다(`pnpm test:e2e` 로 별도).
+- e2e(`test/*.e2e-spec.ts`)는 실제 DB 가 필요하므로 이 빠른 루프엔 기본 미포함(`pnpm test:e2e` 로 별도;
+  옵트인 `CC_E2E_GATE=1`, PR 은 CI 가 강제).
 - Stop 게이트가 `tsc + eslint + prettier --check + 유닛 jest` 를 강제하므로, 세션 종료 전 초록 상태를 맞춘다.

@@ -70,14 +70,21 @@ pnpm test                        # 단위 테스트 (*.spec.ts)
 세 계층이 일관성을 강제합니다:
 
 - **커밋 훅**(Husky + lint-staged) — 변경 파일에 `eslint --fix` + `prettier`, 그리고
-  `commit-msg` 훅이 `commitlint` 로 커밋 메시지 규약을 검사합니다.
+  `commit-msg` 훅이 `commitlint` 로 커밋 메시지 규약을 검사합니다. `pre-commit` 은 여기에 더해
+  **엄격 세트**(`typecheck`·`lint`·`prettier --check`·`check:migrations`·`check:api-tests`·유닛 `jest`
+  - OpenAPI 드리프트)를 돌려 Stop 게이트를 우회한 커밋도 막습니다. AI 자동 커밋 경로는
+    게이트를 이미 통과했으므로 `CC_SKIP_PRECOMMIT_STRICT=1` 센티넬로 이 블록만 건너뜁니다.
 - **Stop 게이트**(`.claude/`) — Claude Code 세션 종료 전 단계별 fail-fast 로 `tsc --noEmit` + `eslint` +
   `prettier --check` + `check:migrations`(마이그레이션 `up()` 파괴적 DDL 가드) + `check:api-tests`(변경분
   한정 테스트 3종: controller/service spec·e2e) + 유닛 `jest` 를 검사하고, 통과 시 변경된 `src` 를
   헤드리스로 의미 리뷰합니다. PR 전 이 게이트를 통과시키세요.
 - **CI** — `lint·typecheck·build·test` 를 동일하게 재검사합니다.
-- e2e(`*.e2e-spec.ts`)는 실제 DB 가 필요하므로 빠른 피드백 루프에서는 제외합니다
-  (`pnpm test:e2e`, 사전에 `migration:run` + `seed`).
+- e2e(`*.e2e-spec.ts`)는 실제 DB 가 필요하므로 빠른 피드백 루프에서는 기본 제외합니다
+  (`pnpm test:e2e`; Stop 게이트에서 돌리려면 옵트인 `CC_E2E_GATE=1`).
+- **게이트 토글**(`.claude/settings.json` 의 `env`) — `CC_SCOPED_GATE=1` 은 검사를 '내 세션
+  작업파일'로 좁혀 같은 워킹트리의 다른 세션 변경이 내 게이트를 막지 않게 합니다(미설정 시 전체 검사).
+  `CC_AUTO_COMMIT=1` 은 게이트 전부 통과 시 작업 내용을 자동 커밋합니다(기본 OFF, push 는 하지 않음).
+- **훅 회귀 테스트** — `.claude/hooks/*.sh` 를 고쳤으면 `pnpm check:hooks` 로 6종 케이스 테스트를 돌립니다.
 
 ## 머신이 강제하는 스타일
 
