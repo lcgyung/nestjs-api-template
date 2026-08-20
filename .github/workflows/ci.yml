@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, dev]
 
+# 액션은 40자 커밋 SHA 로 고정한다(가변 태그 재지정을 통한 공급망 공격 차단 — SAST 게이트가 강제).
+# 뒤의 # vX.Y.Z 주석은 사람이 읽기 위한 것이며, dependabot 이 SHA 와 함께 갱신한다.
+
 # 토큰 기본 권한 최소화 — 명시하지 않은 스코프는 none. 잡별로 필요한 만큼만 확대한다.
 permissions:
   contents: read
@@ -15,9 +18,9 @@ jobs:
     name: Lint · Build · Unit Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
           cache: pnpm
@@ -40,7 +43,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # 히스토리 포함 시크릿 스캔 (리포가 작아 비용 미미)
           fetch-depth: 0
@@ -51,8 +54,8 @@ jobs:
           docker run --rm -v "${{ github.workspace }}:/repo" \
             ghcr.io/gitleaks/gitleaks:v8.30.1 \
             git /repo --redact --no-banner --config=/repo/.gitleaks.toml
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
           cache: pnpm
@@ -67,7 +70,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - run: semgrep scan --config p/typescript --config p/nodejs --config p/owasp-top-ten --error --metrics=off
 
   sbom:
@@ -76,9 +79,9 @@ jobs:
     # 소프트웨어 자재명세서 생성 — 게이트 아님(아티팩트만, 실패해도 머지 비차단)
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
           cache: pnpm
@@ -86,7 +89,7 @@ jobs:
       - run: pnpm dlx @cyclonedx/cdxgen@latest -t pnpm -o sbom.json
         env:
           FETCH_LICENSE: 'false'
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom
           path: sbom.json
@@ -104,9 +107,9 @@ jobs:
       JWT_SECRET: ci-test-secret-at-least-16-chars
       JWT_EXPIRES_IN: 1d
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
           cache: pnpm
